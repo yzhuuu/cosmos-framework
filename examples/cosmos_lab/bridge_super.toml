@@ -30,7 +30,7 @@ iteration_shift = 0
 [model.parallelism]
 data_parallel_shard_degree      = -1                     # -1 = auto from WORLD_SIZE (matches legacy)
 data_parallel_replicate_degree  = 1
-context_parallel_shard_degree   = 1                      # super uses CP=2
+context_parallel_shard_degree   = 1                      # CP=1 for this short-clip study
 cfg_parallel_shard_degree       = 1
 
 [model.compile]
@@ -89,5 +89,5 @@ max_sequence_length = 8192
 # Per-caption token cap before truncation. Structured-JSON captions run longer than
 # dense prose (measured max ~1790 tokens), so keep headroom; raise it for longer captions.
 max_caption_tokens = 2048
-# max_samples_per_batch omitted (None — PackingDataLoader doesn't cap by count)
+# Study caps one sample per microbatch.
 # seed omitted — PackingDataLoader has no seed ctor kwarg
