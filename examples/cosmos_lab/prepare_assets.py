@@ -1,4 +1,4 @@
-"""Download pinned educational samples and optionally the Nano checkpoint."""
+"""Download pinned educational samples or a Nano/Super base-model checkpoint."""
 
 import argparse
 import hashlib

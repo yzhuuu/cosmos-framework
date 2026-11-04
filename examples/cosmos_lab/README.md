@@ -1,4 +1,4 @@
-# Educational Nano baseline
+# Educational Cosmos baselines
 
 This experiment prepares versioned public samples and runs a matched text-to-video / image-to-video robot relocation example. It checks the inference path, not held-out task performance. The task text and initial image come from `inputs/omni/i2v.json`: the right robot hand transfers a red sphere from the top shelf to the bottom shelf while the left hand stays still.
 
@@ -43,7 +43,7 @@ Both requests use seed 2026, 193 frames at 24 FPS, 480-class resolution, 35 deno
 
 The run records the commit, tracked working-tree patch, installed packages, original requests, resolved native setup/sample arguments, start/end times, and once-per-second device memory/utilization samples. `validate_outputs.py` fully decodes the generated videos, checks count/timing, computes adjacent-frame differences and creates contact sheets. Device memory samples are not exact allocator peaks. Pixel changes and valid video files do not establish task success: inspect the actual transfer, sphere persistence, stationary left arm and end state.
 
-No training, Super inference, serving, simulator rollout or benchmark generalization claim is part of this experiment. Study progress and manual observations live in the separate lab `docs/` folder.
+No training, serving, simulator rollout or benchmark generalization claim is part of these baselines. Study progress and manual observations live in the separate lab `docs/` folder.
 
 ## Super comparison (B2)
 
