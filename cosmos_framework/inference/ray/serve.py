@@ -45,7 +45,7 @@ def _get_environment_info() -> dict[str, Any]:
     except Exception:
         commit_sha = None
     return {
-        "cosmos3_version": importlib.metadata.version("cosmos3"),
+        "cosmos3_version": importlib.metadata.version("cosmos-framework"),
         "commit_sha": commit_sha,
     }
 
