@@ -59,3 +59,5 @@ python examples/cosmos_lab/compare_baselines.py "$COSMOS_LAB_ROOT/runs/nano-base
 ```
 
 The comparison helper produces a labelled, synchronized 2x2 viewing copy: Nano on top, Super below, T2V left and I2V right. It preserves the original videos for measurements and refuses to overwrite an existing comparison. It requires FFmpeg/libx264/drawtext and this host's DejaVu Sans font.
+
+The first Super run (Slurm job 334, code `f2bc6d3`) completed on two H200s in 487 seconds. Both 193-frame, 24 FPS, 832×480 outputs passed complete decoding and timestamp checks. In this throughput configuration, rank 0 handled T2V and rank 1 handled I2V concurrently using the sharded model; batch time is not a single-request latency measurement. Contact-sheet inspection found the I2V sphere on the lower shelf, but the T2V sphere on the table to the right of the shelf. Keep this failure in the comparison. The first run establishes working inference, not a general quality ranking.
