@@ -29,6 +29,8 @@ python examples/cosmos_lab/preflight.py
 
 The downloader pins Hugging Face revisions and records file sizes and SHA-256 hashes. Only Nano base weights are downloaded; Sim variants contribute small example assets and action metadata. The sample validator fully decodes videos, checks frame timing and official Bimanual checksums, and validates actions through the native Bimanual contract. Transfer controls with mismatched spatial dimensions are explicitly excluded in the receipt instead of silently treated as aligned.
 
+The native pipeline also initializes Wan2.2 video and AVAE audio tokenizers on its first run, including when generated sound is disabled. It downloads Wan2.2 VAE revision `921dbaf3f1674a56f47e83fb80a34bac8a8f203e` into `HF_HOME`. The native AVAE bootstrap resolves Nano `main`; in the recorded run this resolved to the same pinned Nano revision above. It creates legacy-format AVAE copies in that cache. Preserve the resolved revision and hashes in the experiment receipt; a fresh future `main` resolution is not automatically the same artifact.
+
 ## Run
 
 ```bash
