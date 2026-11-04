@@ -103,7 +103,6 @@ class _FakeModelDeployment:
         )
 
 
-
 @pytest.mark.manual
 @pytest.mark.level(1)
 @pytest.mark.gpus(0)
@@ -143,3 +142,10 @@ def test_ray_serve_integration(tmp_path: Path):
     finally:
         ray.serve.shutdown()
         ray.shutdown()  # type: ignore
+
+
+def test_environment_info_uses_installed_distribution():
+    from cosmos_framework.inference.ray.serve import _get_environment_info
+
+    info = _get_environment_info()
+    assert info["cosmos3_version"]

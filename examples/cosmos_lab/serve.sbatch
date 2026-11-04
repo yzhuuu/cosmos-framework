@@ -14,7 +14,7 @@ source examples/cosmos_lab/environment.sh
 export PATH="$PWD/.venv/bin:$PATH"
 export RAY_TMPDIR="/tmp/yan-cosmos-ray-${SLURM_JOB_ID}"
 OUTPUT_DIR="$COSMOS_LAB_ROOT/runs/nano-serve-${SLURM_JOB_ID}"
-mkdir "$OUTPUT_DIR"
+mkdir -p "$OUTPUT_DIR"
 printf '%s\n' "$HOSTNAME" > "$OUTPUT_DIR/host.txt"
 git rev-parse HEAD > "$OUTPUT_DIR/code-commit.txt"
 git diff HEAD > "$OUTPUT_DIR/code.patch"

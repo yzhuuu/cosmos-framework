@@ -2,6 +2,7 @@
 
 import json
 import os
+import secrets
 import uuid
 from pathlib import Path
 
@@ -51,6 +52,12 @@ def generate(mode: str, prompt: str, image: str | None, seed: int, frames: int):
 
 def main() -> None:
     """Expose only the run output and upload directory through localhost."""
+    auth_path = ROOT / "secrets/playground.json"
+    auth_path.parent.mkdir(mode=0o700, exist_ok=True)
+    if not auth_path.exists():
+        auth_path.write_text(json.dumps({"username": "yan", "password": secrets.token_urlsafe(24)}))
+        auth_path.chmod(0o600)
+    auth = json.loads(auth_path.read_text())
     with gr.Blocks(title="Cosmos Nano 视频实验") as app:
         gr.Markdown("# Cosmos3-Nano 原始模型\n输入文字，或加一张首帧图片。描述直接提交，关闭自动改写。")
         mode = gr.Radio(["text2video", "image2video"], value="image2video", label="输入方式")
@@ -64,7 +71,13 @@ def main() -> None:
             request = gr.JSON(label="实际请求")
             response = gr.JSON(label="状态和结果")
         button.click(generate, [mode, prompt, initial, seed, frames], [output, request, response], concurrency_limit=1)
-    app.queue(max_size=4).launch(server_name="127.0.0.1", server_port=7861, allowed_paths=[str(RUN_DIR)], share=False)
+    app.queue(max_size=4).launch(
+        server_name="127.0.0.1",
+        server_port=7861,
+        allowed_paths=[str(RUN_DIR)],
+        share=False,
+        auth=(auth["username"], auth["password"]),
+    )
 
 
 if __name__ == "__main__":
