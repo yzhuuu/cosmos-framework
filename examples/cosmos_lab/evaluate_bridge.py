@@ -73,7 +73,7 @@ def main() -> None:
             }
         )
     receipt = {
-        "scope": "Validation I2V diagnostic, not action success. Native 4k+1 duration may omit up to 3 GT tail frames; no resampling. Infinite PSNR capped at 100 dB.",
+        "scope": "I2V diagnostic, not action success. Native 4k+1 duration may omit up to 3 GT tail frames; no resampling. Infinite PSNR capped at 100 dB.",
         "results": results,
     }
     (run / "paired-evaluation.json").write_text(json.dumps(receipt, indent=2) + "\n")
