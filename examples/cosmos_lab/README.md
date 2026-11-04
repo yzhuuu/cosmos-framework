@@ -44,3 +44,18 @@ Both requests use seed 2026, 193 frames at 24 FPS, 480-class resolution, 35 deno
 The run records the commit, tracked working-tree patch, installed packages, original requests, resolved native setup/sample arguments, start/end times, and once-per-second device memory/utilization samples. `validate_outputs.py` fully decodes the generated videos, checks count/timing, computes adjacent-frame differences and creates contact sheets. Device memory samples are not exact allocator peaks. Pixel changes and valid video files do not establish task success: inspect the actual transfer, sphere persistence, stationary left arm and end state.
 
 No training, Super inference, serving, simulator rollout or benchmark generalization claim is part of this experiment. Study progress and manual observations live in the separate lab `docs/` folder.
+
+## Super comparison (B2)
+
+The follow-up uses pinned base Super weights, the recorded Nano job's requests, and two H200s with FSDP sharding. The only per-sample request change is `shift=5` per `docs/faq.md`, versus Nano's `10`. This compares model-recommended configurations, not a model-only ablation; GPU count/parallelism also differ. Both modes still use seed 2026, 193 frames, 24 FPS and 35 denoising steps. Single-seed demo inputs do not establish a quality ranking.
+
+```bash
+source examples/cosmos_lab/environment.sh
+python examples/cosmos_lab/prepare_assets.py --lab-root "$COSMOS_LAB_ROOT" --super-weights
+python examples/cosmos_lab/prepare_super_baseline.py "$COSMOS_LAB_ROOT/runs/nano-baseline-289"
+sbatch examples/cosmos_lab/super_baseline.sbatch
+# After the Super job passes output validation, substitute its actual job ID:
+python examples/cosmos_lab/compare_baselines.py "$COSMOS_LAB_ROOT/runs/nano-baseline-289" "$COSMOS_LAB_ROOT/runs/super-baseline-JOB_ID"
+```
+
+The comparison helper produces a labelled, synchronized 2x2 viewing copy: Nano on top, Super below, T2V left and I2V right. It preserves the original videos for measurements and refuses to overwrite an existing comparison. It requires FFmpeg/libx264/drawtext and this host's DejaVu Sans font.
