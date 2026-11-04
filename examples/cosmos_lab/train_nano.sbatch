@@ -15,6 +15,9 @@ export PATH="$PWD/.venv/bin:$PATH"
 export COSMOS_TRAINING=1
 export COSMOS_INTERNAL=0
 export OMP_NUM_THREADS=4
+# Keep multiprocessing sockets outside the node-wide /tmp cleanup scope.
+export TMPDIR="$COSMOS_LAB_ROOT/tmp/j${SLURM_JOB_ID}"
+mkdir -m 700 -p "$TMPDIR"
 export DATASET_PATH="$COSMOS_LAB_ROOT/data/bridge-study-v1"
 export BASE_CHECKPOINT_PATH="$COSMOS_LAB_ROOT/checkpoints/Cosmos3-Nano-DCP"
 export WAN_VAE_PATH="$COSMOS_LAB_ROOT/cache/huggingface/hub/models--Wan-AI--Wan2.2-TI2V-5B/snapshots/921dbaf3f1674a56f47e83fb80a34bac8a8f203e/Wan2.2_VAE.pth"
@@ -37,5 +40,6 @@ trap 'kill "$MONITOR_PID" 2>/dev/null || true' EXIT
 date -u +%FT%TZ > "$TRACE/start.txt"
 srun torchrun --standalone --nnodes=1 --nproc-per-node=4 -m cosmos_framework.scripts.train \
  --sft-toml=examples/cosmos_lab/bridge_nano.toml -- \
- trainer.max_iter="${COSMOS_TRAIN_UPDATES:-10}" checkpoint.save_iter="${COSMOS_SAVE_EVERY:-10}"
+ trainer.max_iter="${COSMOS_TRAIN_UPDATES:-10}" checkpoint.save_iter="${COSMOS_SAVE_EVERY:-10}" \
+ job.wandb_mode="${COSMOS_WANDB_MODE:-online}"
 date -u +%FT%TZ > "$TRACE/end.txt"
