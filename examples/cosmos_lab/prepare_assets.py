@@ -65,10 +65,14 @@ def main() -> None:
             )
         receipts.append({"repo_id": repo_id, "revision": revision, "directory": str(destination), "files": records})
         print(f"Prepared {repo_id}@{revision}: {len(records)} files", flush=True)
-    receipt_name = "bimanual-download.json" if args.bimanual_weights else (
-        "super-download.json"
-        if args.super_weights
-        else ("nano-download.json" if args.nano_weights else "sample-downloads.json")
+    receipt_name = (
+        "bimanual-download.json"
+        if args.bimanual_weights
+        else (
+            "super-download.json"
+            if args.super_weights
+            else ("nano-download.json" if args.nano_weights else "sample-downloads.json")
+        )
     )
     output = root / "runs" / "preflight" / receipt_name
     output.parent.mkdir(parents=True, exist_ok=True)
