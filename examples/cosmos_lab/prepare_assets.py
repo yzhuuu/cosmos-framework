@@ -22,6 +22,7 @@ def main() -> None:
     weights = parser.add_mutually_exclusive_group()
     weights.add_argument("--nano-weights", action="store_true")
     weights.add_argument("--super-weights", action="store_true")
+    weights.add_argument("--bimanual-weights", action="store_true")
     args = parser.parse_args()
     root = args.lab_root.resolve()
     selections = {
@@ -37,10 +38,12 @@ def main() -> None:
         selections = {"nvidia/Cosmos3-Nano": None}
     elif args.super_weights:
         selections = {"nvidia/Cosmos3-Super": None}
+    elif args.bimanual_weights:
+        selections = {"nvidia/Cosmos3-Nano-Sim-Bimanual": None}
     receipts = []
     for repo_id, patterns in selections.items():
         revision = REVISIONS[repo_id]
-        category = "checkpoints" if args.nano_weights or args.super_weights else "data"
+        category = "checkpoints" if args.nano_weights or args.super_weights or args.bimanual_weights else "data"
         destination = root / category / repo_id.split("/")[-1]
         snapshot_download(
             repo_id=repo_id,
@@ -62,7 +65,7 @@ def main() -> None:
             )
         receipts.append({"repo_id": repo_id, "revision": revision, "directory": str(destination), "files": records})
         print(f"Prepared {repo_id}@{revision}: {len(records)} files", flush=True)
-    receipt_name = (
+    receipt_name = "bimanual-download.json" if args.bimanual_weights else (
         "super-download.json"
         if args.super_weights
         else ("nano-download.json" if args.nano_weights else "sample-downloads.json")
