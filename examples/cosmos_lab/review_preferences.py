@@ -3,6 +3,7 @@
 import argparse
 import html
 import json
+import textwrap
 from pathlib import Path
 
 import av
@@ -53,15 +54,19 @@ def main():
             raise ValueError("Candidate first frames differ; review conditioning before pairing")
         video = output / f"{pair['pair_id']}.mp4"
         labels = ["Source (caption audit)", "Candidate A", "Candidate B"]
+        goal_lines = textwrap.wrap(pair.get("review_goal", ""), width=110)
+        height = 286 + 18 * len(goal_lines)
         with av.open(str(video), "w") as container:
             stream = container.add_stream("libx264", rate=int(left["fps"]))
-            stream.width, stream.height, stream.pix_fmt = 768, 286, "yuv420p"
+            stream.width, stream.height, stream.pix_fmt = 768, height, "yuv420p"
             for index in range(count):
-                canvas = Image.new("RGB", (768, 286), "white")
+                canvas = Image.new("RGB", (768, height), "white")
                 draw = ImageDraw.Draw(canvas)
                 for col in range(3):
                     canvas.paste(Image.fromarray(frames[col][index]), (col * 256, 30))
-                    draw.text((col * 256 + 5, 8), labels[col], fill="black")
+                    draw.text((col * 256 + 5, 8), f"{labels[col]} | {index / left['fps']:.1f}s", fill="black")
+                for line_index, line in enumerate(goal_lines):
+                    draw.text((5, 288 + line_index * 18), line, fill="black")
                 for packet in stream.encode(av.VideoFrame.from_image(canvas)):
                     container.mux(packet)
             for packet in stream.encode():
@@ -90,6 +95,8 @@ def main():
                 "fps": left["fps"],
                 "decision": "unreviewed",
                 "training_eligible": False,
+                "review_goal": pair.get("review_goal", ""),
+                "review_questions": pair.get("review_questions", []),
             }
         )
         actions = html.escape(json.dumps(pair["actions"], indent=2))
@@ -97,7 +104,8 @@ def main():
         sections.append(
             f"<section><h2>{pair['pair_id']}</h2><p>Decision: unreviewed; consult manifest for split</p>"
             f'<video controls preload="metadata" src="{video.name}" width="100%"></video>'
-            f"<pre>{actions}</pre><details><summary>Exact full prompt</summary><pre>{prompt}</pre></details>"
+            f"<p>{html.escape(pair.get('review_goal', ''))}</p><pre>{actions}</pre>"
+            f"<details><summary>Exact full prompt</summary><pre>{prompt}</pre></details>"
             f'<a href="{sheet_path.name}">Timestamped contact sheet</a></section>'
         )
     (output / "manifest.json").write_text(json.dumps({"pairs": summaries, "numerical_policy": policy}, indent=2) + "\n")

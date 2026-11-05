@@ -40,13 +40,19 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("lab", type=Path)
     parser.add_argument("destination", type=Path)
+    parser.add_argument("--start", type=int, default=0, help="Zero-based offset within the frozen train split")
+    parser.add_argument("--count", type=int, default=4)
     args = parser.parse_args()
     study = args.lab / "data/bridge-study-v1"
     manifest = json.loads((study / "manifest.json").read_text())
     rows = {
         row["uuid"]: row for row in map(json.loads, (study / "train/video_dataset_file.jsonl").read_text().splitlines())
     }
-    selected = [row for row in manifest["records"] if row["split"] == "train"][:4]
+    if args.start < 0 or args.count < 1:
+        raise ValueError("Expected nonnegative start and positive count")
+    selected = [row for row in manifest["records"] if row["split"] == "train"][args.start : args.start + args.count]
+    if len(selected) != args.count:
+        raise ValueError("Requested selection exceeds the frozen train split")
     held_out = {r["episode"] for r in manifest["records"] if r["split"] != "train"}
     if any(row["episode"] in held_out for row in selected):
         raise ValueError("Episode leakage")
@@ -95,7 +101,7 @@ def main():
         )
     frozen = {
         "created_utc": datetime.now(timezone.utc).isoformat(),
-        "selection": "First four train records in the already frozen Bridge manifest; no output-based selection",
+        "selection": f"Train records [{args.start}:{args.start + args.count}] in frozen Bridge order; no output-based selection",
         "bridge_manifest_sha256": sha256(study / "manifest.json"),
         "checkpoint": str(args.lab / "checkpoints/Cosmos3-Nano"),
         "numerical_policy": "fixed-cudnn-v1",
