@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#SBATCH --job-name=cosmos-super-lora
+#SBATCH --job-name=yuzh-super-lora
 #SBATCH --partition=all
 #SBATCH --nodes=1
 #SBATCH --ntasks=1

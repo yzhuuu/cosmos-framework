@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#SBATCH --job-name=cosmos-nano-dcp
+#SBATCH --job-name=yuzh-nano-dcp
 #SBATCH --partition=all
 #SBATCH --nodes=1
 #SBATCH --ntasks=1

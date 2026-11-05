@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#SBATCH --job-name=cosmos-super-dcp
+#SBATCH --job-name=yuzh-super-dcp
 #SBATCH --partition=all
 #SBATCH --nodes=1
 #SBATCH --ntasks=1

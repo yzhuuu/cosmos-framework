@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#SBATCH --job-name=cosmos-nano-sft
+#SBATCH --job-name=yuzh-nano-sft
 #SBATCH --partition=all
 #SBATCH --nodes=1
 #SBATCH --ntasks=1

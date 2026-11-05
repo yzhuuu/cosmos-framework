@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#SBATCH --job-name=cosmos-bridge-super-base
+#SBATCH --job-name=yuzh-bridge-super-base
 #SBATCH --partition=all
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
@@ -11,7 +11,8 @@
 set -euo pipefail
 cd /mnt/patient-unit/home/yan/cosmos-lab/repos/cosmos-framework-lora
 source examples/cosmos_lab/environment.sh
-# Inference environment is kept separate from the training dependency group.
+export PATH="$COSMOS_LAB_ROOT/repos/cosmos-framework-sft/.venv/bin:$PATH"
+# Match the SFT evaluation runtime for controlled comparisons.
 OUTPUT_DIR="$COSMOS_LAB_ROOT/runs/bridge-super-baseline-${SLURM_JOB_ID}"
 mkdir "$OUTPUT_DIR"
 cp "$COSMOS_LAB_ROOT/data/bridge-super-val-requests.jsonl" "$OUTPUT_DIR/requests.jsonl"
@@ -21,7 +22,7 @@ git diff HEAD > "$OUTPUT_DIR/code.patch"
 nvidia-smi > "$OUTPUT_DIR/nvidia-smi.txt"
 uv pip freeze --python "$(command -v python)" > "$OUTPUT_DIR/packages.txt"
 date -u +%FT%TZ > "$OUTPUT_DIR/start.txt"
-srun torchrun --standalone --nproc-per-node=2 -m cosmos_framework.scripts.inference \
+srun torchrun --standalone --nproc-per-node=2 -m examples.cosmos_lab.stable_inference \
  --checkpoint-path "$COSMOS_LAB_ROOT/checkpoints/Cosmos3-Super" \
  --parallelism-preset=throughput --dp-shard-size=2 --dp-replicate-size=1 --cp-size=1 --cfgp-size=1 \
  -i "$OUTPUT_DIR/requests.jsonl" -o "$OUTPUT_DIR/generated" \
