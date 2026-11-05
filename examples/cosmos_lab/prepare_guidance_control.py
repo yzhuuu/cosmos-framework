@@ -22,7 +22,7 @@ def main():
     args.destination.mkdir(exist_ok=False)
     rows, groups = [], []
     for original in selected:
-        for guidance in [3.0, 6.0, 9.0]:
+        for guidance in [3.0, 6.0, 7.0]:
             group = copy.deepcopy(original)
             group["pair_id"] += f"-g{guidance:g}"
             group["guidance"] = guidance
@@ -49,7 +49,7 @@ def main():
         numerical_policy=prior["numerical_policy"],
         seeds=prior["seeds"],
         selection="Both seeds of the O10 blue-object stationary failure; diagnostic selection after O10, not a fresh held-out performance estimate",
-        intervention="Within level only text changes; across levels only guidance 3/6/9 changes. All four g6 outputs must exactly repeat O10.",
+        intervention="Within level only text changes; across levels only guidance 3/6/7 changes. All four g6 outputs must exactly repeat O10.",
         groups=groups,
         budget=dict(gpus=2, walltime_minutes=30, videos=12),
         scope="Exploratory CFG diagnosis, not training or evidence of global optimum",
