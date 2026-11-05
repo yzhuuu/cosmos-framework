@@ -86,8 +86,13 @@ def main():
         if overlay and not getattr(self, "_yuzh_overlay_loaded", False):
             checkpoint = Path(overlay)
             manifest = json.loads((checkpoint / ".posttrain-checkpoint-artifact.json").read_text())
-            if manifest["iteration"] != 2 or manifest["checkpoint_components"] != ["model"]:
-                raise ValueError("Expected step 2 model-only artifact")
+            expected_step = int(os.environ.get("YUZH_DPO_EXPECTED_STEP", "2"))
+            if (
+                expected_step < 1
+                or manifest["iteration"] != expected_step
+                or manifest["checkpoint_components"] != ["model"]
+            ):
+                raise ValueError(f"Expected step {expected_step} model-only artifact")
             if (checkpoint / "model.pt").stat().st_size != manifest["components"]["model"]["size"]:
                 raise ValueError("Checkpoint size changed")
             payload = torch.load(checkpoint / "model.pt", map_location="cpu", mmap=True, weights_only=True)
