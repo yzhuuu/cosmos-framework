@@ -18,6 +18,8 @@ from cosmos_framework.posttrain.config.rl import DPOConfig
 @attrs.define(slots=False)
 class PosttrainDPOConfig(PosttrainConfig):
     algorithm: str = "dpo"
+    # Optional Cosmos3 adapter subclass for stricter modality-specific contracts.
+    policy_adapter: str = "cosmos_framework.posttrain.model.cosmos3.Cosmos3FlowPolicy"
     rl: DPOConfig = attrs.field(factory=DPOConfig)
 
 

@@ -67,17 +67,28 @@ def build_env(rl: Any) -> Any:
     )
 
 
+def _resolve_policy_adapter(config: Any) -> type:
+    from cosmos_framework.posttrain.model.cosmos3 import Cosmos3FlowPolicy
+    from cosmos_framework.utils.serialization import load_callable
+
+    adapter = load_callable(
+        getattr(config, "policy_adapter", "cosmos_framework.posttrain.model.cosmos3.Cosmos3FlowPolicy")
+    )
+    if not isinstance(adapter, type) or not issubclass(adapter, Cosmos3FlowPolicy):
+        raise TypeError("DPO policy_adapter must name a Cosmos3FlowPolicy subclass")
+    return adapter
+
+
 def build_trainer(config: Any, rl: Any, world_size: int, resume_checkpoint: str | None = None) -> Any:
     """Assemble the DPO policy model, objective, optimizer, and trainer."""
-    from cosmos_framework.utils import misc
     from cosmos_framework.posttrain.algorithm.dpo import make_objective
     from cosmos_framework.posttrain.callbacks.dpo import DPOMetricLogger, DPORewardTrendCallback
     from cosmos_framework.posttrain.config.build import build_backbone, build_optimizer
     from cosmos_framework.posttrain.control.checkpointing import CheckpointLifecycle
-    from cosmos_framework.posttrain.model.cosmos3 import Cosmos3FlowPolicy
     from cosmos_framework.posttrain.roles.env import build_preference_env
     from cosmos_framework.posttrain.roles.trainer.diffusion import CopyInventoryPolicy, DiffusionTrainer
     from cosmos_framework.posttrain.utils.dist import run_rank_converged
+    from cosmos_framework.utils import misc
 
     configured_validation = getattr(rl, "validation", None)
     validation_config = configured_validation if configured_validation and configured_validation.enabled else None
@@ -102,8 +113,9 @@ def build_trainer(config: Any, rl: Any, world_size: int, resume_checkpoint: str 
 
     # Build every rank from the same RNG stream so a random-init frozen reference has one identity.
     misc.set_random_seed(seed=int(rl.seed), by_rank=False)
+    adapter = _resolve_policy_adapter(config)
     model = build_backbone(config, world_size)
-    policy_model = Cosmos3FlowPolicy(model, build_ref=rl.ref.build_ref)
+    policy_model = adapter(model, build_ref=rl.ref.build_ref)
     opt = build_optimizer(model, rl.optimizer)
     objective = make_objective(rl.beta)  # <- objective is selected here (later: a small registry by name)
     trainer = DiffusionTrainer(
@@ -148,13 +160,13 @@ def make_setup(config_path: str, opts: list[str], roles: Sequence[str]) -> Calla
     """Build the requested roles in-process or inside a Ray actor."""
 
     def _setup() -> dict:
-        from cosmos_framework.utils.config import load_config
-        from cosmos_framework.utils.lazy_config import instantiate
         from cosmos_framework.posttrain.control.checkpointing import CheckpointLifecycle
         from cosmos_framework.posttrain.utils.dist import (
             run_rank_converged,
             world_size_or_1,
         )
+        from cosmos_framework.utils.config import load_config
+        from cosmos_framework.utils.lazy_config import instantiate
 
         world = world_size_or_1()
         config = load_config(config_path, ["--", *opts])
@@ -217,7 +229,6 @@ def _log_validation_report(report: ValidationReport, model_step: int) -> None:
 
 
 def loop(units: dict[str, Any], config: Any, out_dir: str) -> dict[str, Any]:
-    from cosmos_framework.utils.lazy_config import instantiate
     from cosmos_framework.posttrain.control.checkpointing import CheckpointLifecycle
     from cosmos_framework.posttrain.control.termination import TerminationWatch
     from cosmos_framework.posttrain.control.validation import ValidationSchedule
@@ -233,6 +244,7 @@ def loop(units: dict[str, Any], config: Any, out_dir: str) -> dict[str, Any]:
         reportable_metrics,
         start_best_effort,
     )
+    from cosmos_framework.utils.lazy_config import instantiate
 
     rl = instantiate(config.rl)
     data, policy = units["data"], units["policy"]
@@ -362,10 +374,10 @@ def loop(units: dict[str, Any], config: Any, out_dir: str) -> dict[str, Any]:
 # --------------------------------------------------------------------------- launch
 def run(config: Any, config_path: str, opts: list[str], out_dir: str) -> None:
     """Bind local or Ray role groups and drive the DPO loop."""
-    from cosmos_framework.utils.lazy_config import instantiate
     from cosmos_framework.posttrain.control.bind import bind_check
     from cosmos_framework.posttrain.control.placement import ActorGroup, DeviceGroup, bind_device_groups
     from cosmos_framework.posttrain.control.recipe import dpo_manifest
+    from cosmos_framework.utils.lazy_config import instantiate
 
     # Pre-flight the SAME manifest `--validate-manifest` checks, before any cluster or model work: a wiring or
     # transport mistake fails here in milliseconds instead of after the placement group and the 8B build.

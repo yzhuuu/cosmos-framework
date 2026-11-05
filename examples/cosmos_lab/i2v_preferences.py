@@ -21,11 +21,14 @@ def digest(path):
 class BridgeI2VPreferences:
     """No resampling/caption dropout; exact full clips and an explicit shared first frame.
 
-    Only reviewed training episodes are accepted. Membership aliases cover source
+    Only reviewed episodes from the explicitly selected split are accepted. Membership aliases cover source
     episodes as well as generated media, so re-generating seeds cannot hide leakage.
     """
 
-    def __init__(self, jsonl_path, bridge_manifest_path):
+    def __init__(self, jsonl_path, bridge_manifest_path, purpose="train"):
+        if purpose not in {"train", "validation"}:
+            raise ValueError("Expected train or validation purpose")
+        self.purpose = purpose
         self.path = Path(jsonl_path)
         self.bridge_path = Path(bridge_manifest_path)
         self.rows = [json.loads(line) for line in self.path.read_text().splitlines() if line.strip()]
@@ -36,12 +39,16 @@ class BridgeI2VPreferences:
             raise ValueError("Duplicate episode")
         for row in self.rows:
             original = source[row["pair_id"]]
-            if original["split"] != "train" or row["source_split"] != "train":
-                raise ValueError("Held-out episode cannot enter training")
+            expected_split = "train" if purpose == "train" else "val"
+            if original["split"] != expected_split or row["source_split"] != expected_split:
+                raise ValueError("Held-out/training episode cannot enter the wrong purpose")
             if row["episode"] != original["episode"] or row["source_sha256"] != original["sha256"]:
                 raise ValueError("Source identity differs from frozen Bridge manifest")
             annotation = row["annotation"]
-            if annotation["decision"] not in {"a", "b"} or not annotation["training_eligible"]:
+            eligible = annotation.get("training_eligible" if purpose == "train" else "validation_eligible", False)
+            if purpose == "validation" and annotation["training_eligible"]:
+                raise ValueError("Validation annotations cannot be training eligible")
+            if annotation["decision"] not in {"a", "b"} or not eligible:
                 raise ValueError("Unaccepted preference")
             if annotation["confidence"] not in {"medium", "high"} or not annotation["all_frames_reviewed"]:
                 raise ValueError("Insufficient annotation evidence")
@@ -62,7 +69,7 @@ class BridgeI2VPreferences:
         return len(self.rows)
 
     def cursor_fingerprint(self):
-        return "bridge-i2v-fullclip-v1:" + self._fingerprint
+        return "bridge-i2v-fullclip-v1:" + self.purpose + ":" + self._fingerprint
 
     def membership_ids(self):
         return tuple(

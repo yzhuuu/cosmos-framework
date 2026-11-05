@@ -116,3 +116,48 @@ def test_no_silent_t2v_fallback():
     a = torch.zeros(1, 4, 3, 2, 2)
     with pytest.raises(ValueError, match="exactly first latent frame"):
         policy.assert_same_condition_context(condition(a, []), condition(a, []))
+
+
+def test_validation_requires_explicit_purpose_and_has_disjoint_identity():
+    path = PAIRS.with_name("val.jsonl")
+    with pytest.raises(ValueError, match="wrong purpose"):
+        BridgeI2VPreferences(path, MANIFEST)
+    with pytest.raises(ValueError, match="wrong purpose"):
+        BridgeI2VPreferences(PAIRS, MANIFEST, purpose="validation")
+    validation = BridgeI2VPreferences(path, MANIFEST, purpose="validation")
+    train = BridgeI2VPreferences(PAIRS, MANIFEST)
+    assert len(validation) == 1
+    assert not set(train.membership_ids()) & set(validation.membership_ids())
+    _, winner, loser = validation[0]
+    assert torch.equal(winner["video"][0][:, 0], loser["video"][0][:, 0])
+    sources = []
+    for path, purpose in [(PAIRS, "train"), (path, "validation")]:
+        sources.append(
+            build_preference_env(
+                PreferenceEnvConfig(
+                    factory="examples.cosmos_lab.i2v_preferences.BridgeI2VPreferences",
+                    factory_kwargs={"jsonl_path": str(path), "bridge_manifest_path": str(MANIFEST), "purpose": purpose},
+                    shuffle=False,
+                ),
+                seed=2026,
+                include_source_identity=True,
+            )
+        )
+    sources[0].reject_preference_source_overlap(sources[1].preference_source_identity())
+
+
+def test_native_policy_adapter_hook_keeps_default_and_rejects_wrong_class():
+    from cosmos_framework.posttrain.entrypoints.dpo import _resolve_policy_adapter
+    from cosmos_framework.posttrain.model.cosmos3 import Cosmos3FlowPolicy
+
+    assert _resolve_policy_adapter(SimpleNamespace()) is Cosmos3FlowPolicy
+    assert (
+        _resolve_policy_adapter(
+            SimpleNamespace(policy_adapter="examples.cosmos_lab.i2v_preferences.BridgeI2VFlowPolicy")
+        )
+        is BridgeI2VFlowPolicy
+    )
+    with pytest.raises(TypeError, match="subclass"):
+        _resolve_policy_adapter(
+            SimpleNamespace(policy_adapter="examples.cosmos_lab.i2v_preferences.BridgeI2VPreferences")
+        )
