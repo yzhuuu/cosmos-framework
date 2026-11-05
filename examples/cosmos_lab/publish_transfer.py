@@ -24,6 +24,7 @@ def main():
         project="cosmos-lab",
         job_type="evaluation",
         name=args.name,
+        dir=str(args.runs[0]),
         config={
             "checkpoint_revision": "42da1b57840cec0fd2b642546b72cb95fdc331af",
             "seed": 2026,
