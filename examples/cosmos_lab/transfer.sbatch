@@ -19,10 +19,13 @@ mkdir -m 700 -p "$TMPDIR"
 SKILL="$PWD/.agents/skills/cosmos3-nano-sim-transfer"
 MODEL="$COSMOS_LAB_ROOT/checkpoints/Cosmos3-Nano-Sim-Transfer"
 MODALITY="${YUZH_TRANSFER_MODALITY:-depth}"
+STUDY="${YUZH_TRANSFER_STUDY:-transfer-study-v1}"
+WINDOW="${YUZH_TRANSFER_CACHE_WINDOW:-0}"
+SINK="${YUZH_TRANSFER_SINK:-0}"
 OUTPUT_DIR="$COSMOS_LAB_ROOT/runs/transfer-${MODALITY}-${SLURM_JOB_ID}"
 mkdir "$OUTPUT_DIR"
-cp "$COSMOS_LAB_ROOT/data/transfer-study-v1/${MODALITY}-requests.jsonl" "$OUTPUT_DIR/requests.jsonl"
-cp "$COSMOS_LAB_ROOT/data/transfer-study-v1/manifest.json" "$OUTPUT_DIR/dataset-manifest.json"
+cp "$COSMOS_LAB_ROOT/data/${STUDY}/${MODALITY}-requests.jsonl" "$OUTPUT_DIR/requests.jsonl"
+cp "$COSMOS_LAB_ROOT/data/${STUDY}/manifest.json" "$OUTPUT_DIR/dataset-manifest.json"
 cp "$COSMOS_LAB_ROOT/runs/preflight/transfer-checkpoint.json" "$OUTPUT_DIR/model-manifest.json"
 git rev-parse HEAD > "$OUTPUT_DIR/code-commit.txt"
 git diff HEAD > "$OUTPUT_DIR/code.patch"
@@ -48,7 +51,7 @@ srun python -m cosmos_framework.scripts.inference \
  --autoregressive=True --cp-size 1 --cfgp-size 1 --dp-shard-size 1 --dp-replicate-size 1 \
  --seed 2026 --num-outputs 1 --max-num-seqs 1 \
  --num-steps 4 --guidance 1 --control-guidance 1 \
- --kv-cache-inference-size 0 --attention-sink-size 0 \
+ --kv-cache-inference-size "$WINDOW" --attention-sink-size "$SINK" \
  --no-use-torch-compile --no-use-cuda-graphs --no-condition-stream-encode \
  --no-diffusion-cache --prompt-upsampling=False --no-guardrails
 date -u +%FT%TZ > "$OUTPUT_DIR/end.txt"

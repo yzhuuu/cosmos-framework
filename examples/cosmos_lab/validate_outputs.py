@@ -20,10 +20,11 @@ def main() -> None:
         videos = list((args.run_dir / "generated" / row["name"]).rglob("vision.mp4"))
         assert len(videos) == 1, videos
         path = videos[0]
+        expected_frames = min(row["num_frames"], row.get("max_frames", row["num_frames"]))
         previous = None
         differences, timestamps, geometry = [], [], set()
         samples = {}
-        chosen = set(np.linspace(0, row["num_frames"] - 1, 9, dtype=int).tolist())
+        chosen = set(np.linspace(0, expected_frames - 1, 9, dtype=int).tolist())
         with av.open(str(path)) as container:
             stream = container.streams.video[0]
             fps = float(stream.average_rate)
@@ -37,7 +38,7 @@ def main() -> None:
                 previous = rgb.astype(np.float32)
                 if index in chosen:
                     samples[index] = Image.fromarray(rgb).resize((416, 240))
-        assert len(timestamps) == row["num_frames"], (path, len(timestamps))
+        assert len(timestamps) == expected_frames, (path, len(timestamps))
         assert fps == row["fps"] and len(geometry) == 1, path
         assert all(abs(t - timestamps[0] - i / fps) < 1e-4 for i, t in enumerate(timestamps)), path
         sheet = Image.new("RGB", (416 * 3, 268 * 3), "white")

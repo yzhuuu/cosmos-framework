@@ -11,6 +11,7 @@ from pathlib import Path
 
 def main():
     parser = argparse.ArgumentParser()
+    parser.add_argument("--example", choices=["example1", "example2"], default="example2")
     parser.add_argument("--source", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
@@ -18,25 +19,35 @@ def main():
         raise FileExistsError(args.output)
     skill = Path(__file__).resolve().parents[2] / ".agents/skills/cosmos3-nano-sim-transfer"
     prepare = runpy.run_path(str(skill / "scripts/prepare_hf_sample.py"))["prepare"]
-    prepare("example2", args.source, args.output / "native")
+    prepare(args.example, args.source, args.output / "native")
     rows = []
     for modality in ("depth", "seg"):
         base = json.loads((args.output / "native/requests" / f"{modality}.json").read_text())
-        assert "black dress" in base["prompt"]
-        for color in ("black", "red"):
-            row = {**base, "name": f"example2_{modality}_{color}", "seed": 2026}
-            row["prompt"] = base["prompt"].replace("black dress", f"{color} dress")
+        colors = ("yellow", "red") if args.example == "example1" else ("black", "red")
+        for color in colors:
+            row = {**base, "name": f"{args.example}_{modality}_{color}", "seed": 2026}
+            if args.example == "example1":
+                assert base["prompt"].count("yellow plastic") == 2
+                row["prompt"] = base["prompt"].replace("yellow plastic", f"{color} plastic")
+            else:
+                assert "black dress" in base["prompt"]
+                row["prompt"] = base["prompt"].replace("black dress", f"{color} dress")
             rows.append(row)
     args.output.mkdir(exist_ok=True)
     for modality in ("depth", "seg"):
         path = args.output / f"{modality}-requests.jsonl"
         path.write_text("".join(json.dumps(row) + "\n" for row in rows if f"_{modality}_" in row["name"]))
     files = []
-    for p in sorted(args.source.glob("example2*")):
+    for p in sorted(args.source.glob(f"{args.example}*")):
         files.append({"path": str(p.resolve()), "sha256": hashlib.sha256(p.read_bytes()).hexdigest()})
     manifest = {
         "revision": "42da1b57840cec0fd2b642546b72cb95fdc331af",
-        "scope": "Official example2; fixed control/seed, change only black dress to red dress.",
+        "example": args.example,
+        "source_rgb": str((args.source / f"{args.example}.mp4").resolve()),
+        "labels": ["Yellow arm covers", "Red arm covers"]
+        if args.example == "example1"
+        else ["Black dress", "Red dress"],
+        "scope": "Official fixed-control/seed appearance study; only arm-cover color (example1) or dress color (example2) changes.",
         "files": files,
         "requests": rows,
     }
