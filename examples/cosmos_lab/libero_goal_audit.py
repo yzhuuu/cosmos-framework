@@ -36,7 +36,6 @@ def main():
                 env.set_state(data["final_sim_state"])
             env.env.sim.forward()
             actual = bool(env.check_success())
-            assert actual == row["success_final"], "Reconstructed terminal success differs"
             predicates = []
             for goal in env.env.parsed_problem["goal_state"]:
                 item = {"goal": goal, "value": bool(env.env._eval_predicate(goal))}
@@ -58,6 +57,7 @@ def main():
                     "case": row["name"],
                     "recorded_success": row["success_final"],
                     "reconstructed_success": actual,
+                    "matches_recorded": actual == row["success_final"],
                     "predicates": predicates,
                 }
             )
@@ -65,6 +65,7 @@ def main():
         finally:
             env.close()
     (args.run / "terminal-goal-audit.json").write_text(json.dumps(results, indent=2) + "\n")
+    assert all(row["matches_recorded"] for row in results), "Reconstructed terminal success differs; full audit saved"
 
 
 if __name__ == "__main__":

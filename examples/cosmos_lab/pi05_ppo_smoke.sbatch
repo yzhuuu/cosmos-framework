@@ -29,7 +29,7 @@ export NNODES=1 GPUS_PER_NODE=4
 export WANDB_ENTITY=sav-inception-self WANDB_PROJECT=cosmos-lab WANDB_MODE=online
 # Optional NVIDIA OneLogger SDK is absent; the native W&B reporter remains enabled.
 export ENABLE_ONELOGGER=false
-export WANDB_NAME="yuzh-ppo-${SLURM_JOB_ID}" WANDB_RUN_GROUP=pi05-ppo-smoke
+export WANDB_NAME="yuzh-ppo-${SLURM_JOB_ID}" WANDB_RUN_GROUP="${YUZH_PPO_GROUP:-pi05-ppo-smoke}"
 export RAY_TMPDIR="/tmp/yuzh-ray-${SLURM_JOB_ID}"
 export B1K_SIM_IPC_DIR="/tmp/yuzh-sim-${SLURM_JOB_ID}"
 export B1K_SHM_DIR="/tmp/yuzh-shm-${SLURM_JOB_ID}"
@@ -39,7 +39,8 @@ mkdir "$OUTPUT_DIR"
 export IMAGINAIRE_OUTPUT_ROOT="$OUTPUT_DIR/output"
 export WANDB_DIR="$OUTPUT_DIR"
 export YUZH_PPO_AUDIT_DIR="$OUTPUT_DIR/audit"
-cp "$COSMOS_LAB_ROOT/runs/r5-ppo-preflight/protocol-v3.json" "$OUTPUT_DIR/protocol.json"
+cp "${YUZH_PPO_PROTOCOL:-$COSMOS_LAB_ROOT/runs/r5-ppo-preflight/protocol-v3.json}" "$OUTPUT_DIR/protocol.json"
+PPO_CONFIG="${YUZH_PPO_CONFIG:-examples/cosmos_lab/pi05_ppo_smoke.py}"
 git rev-parse HEAD > "$OUTPUT_DIR/code-commit.txt"
 git diff HEAD > "$OUTPUT_DIR/code.patch"
 uv pip freeze --python "$(command -v python)" > "$OUTPUT_DIR/packages.txt"
@@ -49,7 +50,7 @@ date -u +%FT%TZ > "$OUTPUT_DIR/start.txt"
 srun python -m examples.cosmos_lab.pi05_sim_preflight "$OUTPUT_DIR"
 srun python -c 'import torch, vllm, vllm_omni, ray; assert torch.cuda.device_count() == 4; print(torch.__version__, vllm.__version__, ray.__version__); print(torch.ones(1, device="cuda"))'
 srun python -m examples.cosmos_lab.pi05_ppo_audited \
-  --config examples/cosmos_lab/pi05_ppo_smoke.py --validate-manifest
+  --config "$PPO_CONFIG" --validate-manifest
 srun python -m examples.cosmos_lab.pi05_ppo_audited \
-  --config examples/cosmos_lab/pi05_ppo_smoke.py
+  --config "$PPO_CONFIG"
 date -u +%FT%TZ > "$OUTPUT_DIR/end.txt"
