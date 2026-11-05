@@ -17,6 +17,24 @@ from cosmos_framework.utils.generator.lora import (
 pytestmark = pytest.mark.L0
 
 
+@pytest.mark.parametrize("dtype", [torch.bfloat16, torch.float32])
+@torch.no_grad()
+def test_precise_dense_merge_rounds_only_the_completed_sum(dtype):
+    layer = LoraInjectedLinear(torch.nn.Linear(1, 1, dtype=dtype), rank=1, alpha=1, adapter_dtype=torch.float32)
+    layer.weight.fill_(1.0)
+    layer.bias.fill_(0.25)
+    layer.lora_A.weight.fill_(1.0)
+    layer.lora_B.weight.fill_(0.00392)
+    network = torch.nn.ModuleDict({"layer": layer})
+    with torch.autocast(device_type="cpu", dtype=torch.bfloat16):
+        assert merge_and_strip_lora_adapters_(network, precise=True) == 1
+    assert type(network["layer"]) is torch.nn.Linear
+    assert set(network.state_dict()) == {"layer.weight", "layer.bias"}
+    torch.testing.assert_close(network["layer"].weight, torch.tensor([[1.00392]], dtype=dtype), rtol=0, atol=0)
+    torch.testing.assert_close(network["layer"].bias, torch.tensor([0.25], dtype=dtype), rtol=0, atol=0)
+    assert merge_and_strip_lora_adapters_(network, precise=True) == 0
+
+
 class _Tiny(torch.nn.Module):
     def __init__(self) -> None:
         super().__init__()

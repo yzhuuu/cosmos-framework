@@ -193,6 +193,8 @@ class Args(ParallelismOverrides):
     """Output model directory."""
     config_only: bool = False
     """If True, only export config."""
+    merge_lora: bool = False
+    """Merge loaded native LoRA adapters into dense weights with FP32 accumulation."""
     student_only_checkpoint_metadata: bool = False
     """If True, omit source checkpoint and credential paths from checkpoint metadata."""
     vit: bool = True
@@ -370,6 +372,8 @@ def _verify_exported_checkpoint(output_dir: Path, *, run_reasoner_check: bool) -
 
 
 def export_model(args: Args) -> None:
+    if args.merge_lora and args.config_only:
+        raise ValueError("--merge-lora requires loading and exporting weights, not --config-only")
     register_checkpoints()
     checkpoint_args = args.checkpoint.build_checkpoint(checkpoints={})
     args.output_dir.mkdir(parents=True, exist_ok=True)
@@ -493,6 +497,14 @@ def export_model(args: Args) -> None:
                 load_ema_to_reg=checkpoint_args.use_ema_weights,
             ),
         )
+        if args.merge_lora:
+            from cosmos_framework.utils.generator.lora import merge_and_strip_lora_adapters_
+
+            merged_count = merge_and_strip_lora_adapters_(hf_model.model.net, precise=True)
+            if merged_count == 0:
+                raise ValueError("--merge-lora requested but no native LoRA modules were loaded")
+            hf_config.model["config"]["lora_enabled"] = False
+            log.info(f"Merged and removed {merged_count} LoRA modules using FP32 accumulation")
         state_dict = get_model_state_dict(
             hf_model,
             options=StateDictOptions(
@@ -611,6 +623,8 @@ def export_model(args: Args) -> None:
         "vit": args.vit,
         "vit_checkpoint_path": str(args.vit_checkpoint_path) if args.vit_checkpoint_path is not None else None,
     }
+    if args.merge_lora:
+        export_args.update(merge_lora=True, merged_lora_modules=merged_count, merge_accumulation="float32_or_higher")
     # Only non-default values of the newer options, so default manifests keep their previous shape.
     for key, default in (("bundle_lidar_vae", False), ("per_view_captions", "auto"), ("per_view_caption_task", None)):
         if getattr(args, key) != default:

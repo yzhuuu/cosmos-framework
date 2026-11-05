@@ -383,14 +383,20 @@ def merge_lora_adapters_(network: torch.nn.Module) -> int:
 
 
 @torch.no_grad()
-def merge_and_strip_lora_adapters_(network: torch.nn.Module) -> int:
-    """Merge adapters and restore plain ``nn.Linear`` modules for HF export."""
+def merge_and_strip_lora_adapters_(network: torch.nn.Module, *, precise: bool = False) -> int:
+    """Merge and restore plain Linear modules; precise uses FP32 accumulation.
+
+    The default preserves the existing offline merge's rounding behavior.
+    """
     merged = 0
     for parent in list(network.modules()):
         for child_name, child in list(parent.named_children()):
             if not isinstance(child, LoraInjectedLinear):
                 continue
-            child.merge_adapter_()
+            if precise:
+                child.weight.copy_(child.merged_weight(child.weight, child.lora_A.weight, child.lora_B.weight))
+            else:
+                child.merge_adapter_()
             dense = nn.Linear(
                 child.in_features,
                 child.out_features,
