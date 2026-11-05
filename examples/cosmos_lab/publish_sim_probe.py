@@ -21,6 +21,7 @@ def main():
     review = args.run / "review"
     review.mkdir(exist_ok=False)
     pixels = {}
+    initial_states = {}
     validations = []
     for row in report["trials"]:
         path = probe / row["name"] / "views.mp4" if policy else probe / (row["name"] + ".mp4")
@@ -35,6 +36,7 @@ def main():
             pixels[row["name"]] = frames
         npz = probe / row["name"] / "trajectory.npz" if policy else probe / (row["name"] + ".npz")
         with np.load(npz, allow_pickle=False) as data:
+            initial_states[row["name"]] = data["initial_sim_state"].copy()
             assert np.isfinite(data["states"]).all() and np.isfinite(data["actions"]).all()
             assert data["states"].shape == (row["frames"], 8)
             assert data["actions"].shape == (row["frames"] - 1, 7)
@@ -46,10 +48,11 @@ def main():
     modes = ["zero", "policy"] if policy else ["zero", "positive_x", "negative_x"]
     labels = ["Zero control", "Pretrained policy"] if policy else ["Zero control", "+X control", "-X control"]
     font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 14)
-    for task_id in sorted({r["task_id"] for r in report["trials"]}):
-        arrays = [pixels[f"task-{task_id}-{m}"] for m in modes]
+    for case_id in sorted({r.get("case_id", f"task-{r['task_id']}") for r in report["trials"]}):
+        arrays = [pixels[f"{case_id}-{m}"] for m in modes]
+        assert all(np.array_equal(initial_states[f"{case_id}-{m}"], initial_states[f"{case_id}-zero"]) for m in modes)
         width = 256 * len(modes)
-        with av.open(str(review / f"task-{task_id}.mp4"), "w") as container:
+        with av.open(str(review / f"{case_id}.mp4"), "w") as container:
             stream = container.add_stream("libx264", rate=20)
             stream.width, stream.height, stream.pix_fmt = width, 312, "yuv420p"
             for step in range(len(arrays[0])):
@@ -58,22 +61,19 @@ def main():
                 for j, (array, label) in enumerate(zip(arrays, labels, strict=True)):
                     image.paste(Image.fromarray(array[step, :, :256]), (j * 256, 28))
                     draw.text((j * 256 + 4, 4), f"{label} | {step / 20:.2f}s", font=font, fill="black")
-                draw.text(
-                    (4, 290), f"Task {task_id}, same initial state; no training in this run.", font=font, fill="black"
-                )
+                draw.text((4, 290), f"{case_id}, same initial state; no new training.", font=font, fill="black")
                 for packet in stream.encode(av.VideoFrame.from_image(image)):
                     container.mux(packet)
             for packet in stream.encode():
                 container.mux(packet)
     repeats = {}
-    for task_id in [0] if policy else [0, 1, 2]:
-        condition = "policy" if policy else "positive_x"
-        repeats[str(task_id)] = bool(
-            np.array_equal(pixels[f"task-{task_id}-{condition}"], pixels[f"task-{task_id}-{condition}_repeat"])
-        )
+    for name in pixels:
+        if name.endswith("_repeat"):
+            repeats[name] = bool(np.array_equal(pixels[name.removesuffix("_repeat")], pixels[name]))
     audit = {
         "videos": validations,
         "pixel_exact_repeats": repeats,
+        "paired_initial_physics_identical": True,
         "visual_review_scope": "Decoded all frames and checked trajectory records. Contact sheets separately inspected; not a full human video assessment.",
     }
     (review / "validation.json").write_text(json.dumps(audit, indent=2) + "\n")
@@ -85,12 +85,12 @@ def main():
         config=report["protocol"],
         dir=str(review),
     ) as run:
-        table = wandb.Table(columns=["task", "condition", "instruction", "success_any", "success_final", "video"])
+        table = wandb.Table(columns=["case", "condition", "instruction", "success_any", "success_final", "video"])
         for row in report["trials"]:
             path = probe / row["name"] / "views.mp4" if policy else probe / (row["name"] + ".mp4")
             video = wandb.Video(str(path), format="mp4", caption="Left: agent view; right: wrist view. " + row["name"])
             table.add_data(
-                row["task_id"],
+                row.get("case_id", f"task-{row['task_id']}"),
                 row.get("mode", row.get("condition")),
                 row["language"],
                 row["success_any"],

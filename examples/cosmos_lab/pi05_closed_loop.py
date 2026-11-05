@@ -47,7 +47,9 @@ def main():
             raise RuntimeError("Policy worker failed to start; see policy-worker.log")
         for trial in protocol["trials"]:
             task_id, mode = trial["task_id"], trial["mode"]
-            name = f"task-{task_id}-{mode}"
+            case_id = trial.get("case_id", f"task-{task_id}")
+            name = f"{case_id}-{mode}"
+            initial_id = trial.get("init_state_id", protocol["init_state_id"])
             folder = args.output / name
             folder.mkdir()
             task = suite.get_task(task_id)
@@ -66,7 +68,7 @@ def main():
             try:
                 env.seed(protocol["seed"])
                 env.reset()
-                obs = env.set_init_state(suite.get_task_init_states(task_id)[protocol["init_state_id"]])
+                obs = env.set_init_state(suite.get_task_init_states(task_id)[initial_id])
                 zero = np.zeros(7, dtype=np.float64)
                 zero[-1] = -1
                 for _ in range(15):
@@ -173,8 +175,9 @@ def main():
             records.append(record)
             (args.output / "partial.json").write_text(json.dumps(records, indent=2) + "\n")
             print(json.dumps(record), flush=True)
-        a = np.load(args.output / "task-0-policy/trajectory.npz")
-        b = np.load(args.output / "task-0-policy_repeat/trajectory.npz")
+        repeat_case = protocol.get("repeat_case", "task-0")
+        a = np.load(args.output / f"{repeat_case}-policy/trajectory.npz")
+        b = np.load(args.output / f"{repeat_case}-policy_repeat/trajectory.npz")
         repeat = {
             key + "_max_error": float(np.abs(a[key] - b[key]).max())
             for key in ["states", "actions", "initial_sim_state", "final_sim_state"]
@@ -185,7 +188,7 @@ def main():
                     "protocol": protocol,
                     "trials": records,
                     "repeat_task0": repeat,
-                    "scope": "Three fixed, previously probed initial cases; engineering smoke only, not independent benchmark or RL result.",
+                    "scope": protocol["scope"],
                 },
                 indent=2,
             )
