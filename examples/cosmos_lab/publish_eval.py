@@ -32,6 +32,7 @@ def main() -> None:
         config={
             "training_runs": args.training_runs,
             "source_runs": manifest["runs"],
+            "numerical_policy": manifest.get("numerical_policy"),
             "scope": "Fixed-seed I2V video comparison. PSNR is a diagnostic, not robot task success or human preference.",
             "video_columns": manifest["columns"],
         },

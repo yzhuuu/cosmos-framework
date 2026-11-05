@@ -18,6 +18,13 @@ def main() -> None:
     runs = [(label, Path(path)) for label, path in (item.split("=", 1) for item in args.runs)]
     requests = [(run / "requests.jsonl").read_text() for _, run in runs]
     assert all(text == requests[0] for text in requests), "Comparison requires identical requests, including seeds"
+    policies = []
+    for _, run in runs:
+        path = run / "generated/runtime-numerics.json"
+        policies.append(json.loads(path.read_text()) if path.exists() else None)
+    assert all(policy == policies[0] for policy in policies), (
+        "Comparison requires matching numerical policies; do not mix legacy and fixed-cuDNN runs"
+    )
     rows = [json.loads(line) for line in requests[0].splitlines()]
     dataset = json.loads((runs[0][1] / "dataset-manifest.json").read_text())
     records = {row["uuid"]: row for row in dataset["records"]}
@@ -67,6 +74,7 @@ def main() -> None:
         outputs.append({"name": row["name"], "path": str(video), "frames": count, "fps": 5})
     receipt = {
         "runs": args.runs,
+        "numerical_policy": policies[0],
         "columns": ["GT", "Static first frame"] + [name for name, _ in runs],
         "outputs": outputs,
     }
