@@ -15,7 +15,9 @@ def main():
     lab = Path("/mnt/patient-unit/home/yan/cosmos-lab")
     assert (args.trace / "end.txt").is_file(), "Training process has not completed successfully"
     audit = json.loads((args.trace / "checkpoint-audit.json").read_text())
-    run_id = (args.run_dir / "wandb_run_id.txt").read_text().strip()
+    run_id = args.run_dir.name
+    if not (len(run_id) == 14 and run_id.isdigit()):
+        run_id = (args.run_dir / "wandb_run_id.txt").read_text().strip()
     api_run = wandb.Api().run(f"sav-inception-self/cosmos-lab/{run_id}")
     history = list(api_run.scan_history())
     (args.trace / "wandb-history.json").write_text(json.dumps(history, indent=2) + "\n")
