@@ -102,6 +102,7 @@ def main():
             "config-beta-5000.json",
             "config-beta-500.json",
             "training-audit.json",
+            "provenance-audit.json",
         ):
             artifact.add_file(str(study / name), name="study/" + name)
         for name in (
