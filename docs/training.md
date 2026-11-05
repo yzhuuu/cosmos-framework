@@ -438,6 +438,23 @@ python -m cosmos_framework.scripts.export_model \
 
 The exported safetensors land at `$RUN_DIR/model` and can be used in [Inference](../README.md#inference) commands by passing `--checkpoint-path $RUN_DIR/model`.
 
+For a native LoRA checkpoint, the default export retains the adapters. This
+experimental branch also supports an explicit dense export:
+
+```shell
+python -m cosmos_framework.scripts.export_model \
+  --checkpoint-path $CHECKPOINT_PATH --config-file $RUN_DIR/config.yaml \
+  --no-use-ema-weights --merge-lora -o $RUN_DIR/model_dense
+```
+
+This loads weights in the configured model dtype, accumulates each merge in at
+least FP32, rounds to the model dtype, removes adapter modules and writes
+`lora_enabled=false`. It does not merge directly from FP32 master weights unless
+the model is loaded in FP32. The manifest records the merge count and policy.
+Use a fresh destination and validate generation: merged and runtime LoRA can
+differ because floating-point rounding and matrix multiplication order change.
+`--merge-lora` rejects `--config-only` and checkpoints with no native adapters.
+
 ### ViT / vision tower (Cosmos3-Edge)
 
 The plain export above is all any recipe needs — Edge included. For Cosmos3-Edge, `export_model` bundles the SigLIP2 vision tower into `$RUN_DIR/model/vision_encoder/` and the processor/tokenizer files into the export root, so the exported directory is **self-contained**: inference runs from it offline, with no Hub download (see [Inference → Reasoner](./inference.md#reasoner)). `export_manifest.json` records where the tower and processor came from. Nano/Super exports bundle their processor files the same way.
