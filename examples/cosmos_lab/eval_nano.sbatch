@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#SBATCH --job-name=cosmos-bridge-sft-eval
+#SBATCH --job-name=yuzh-bridge-sft-eval
 #SBATCH --partition=all
 #SBATCH --nodes=1
 #SBATCH --ntasks=1

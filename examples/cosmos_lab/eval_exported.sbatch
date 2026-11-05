@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#SBATCH --job-name=cosmos-bridge-hf-eval
+#SBATCH --job-name=yuzh-bridge-hf-eval
 #SBATCH --partition=all
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
