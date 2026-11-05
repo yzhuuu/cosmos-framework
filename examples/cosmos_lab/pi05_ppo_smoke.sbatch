@@ -25,6 +25,8 @@ export NUMBA_CACHE_DIR="$COSMOS_LAB_ROOT/cache/numba-libero"
 export MPLCONFIGDIR="$COSMOS_LAB_ROOT/cache/matplotlib-libero"
 export NNODES=1 GPUS_PER_NODE=4
 export WANDB_ENTITY=sav-inception-self WANDB_PROJECT=cosmos-lab WANDB_MODE=online
+# Optional NVIDIA OneLogger SDK is absent; the native W&B reporter remains enabled.
+export ENABLE_ONELOGGER=0
 export WANDB_NAME="yuzh-ppo-${SLURM_JOB_ID}" WANDB_RUN_GROUP=pi05-ppo-smoke
 export RAY_TMPDIR="/tmp/yuzh-ray-${SLURM_JOB_ID}"
 export B1K_SIM_IPC_DIR="/tmp/yuzh-sim-${SLURM_JOB_ID}"
