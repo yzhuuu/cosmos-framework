@@ -45,3 +45,10 @@ def test_different_image_rejected(pair, tmp_path):
     right["vision_path"] = str(image)
     with pytest.raises(ValueError):
         module.validate_pair(left, right, source)
+
+
+def test_global_seed_override_rejected():
+    request = dict(name="b", seed=2027, prompt="move", num_frames=93, fps=5, num_steps=35, guidance=6, shift=10)
+    module.validate_effective(request, dict(request))
+    with pytest.raises(ValueError, match="Effective seed"):
+        module.validate_effective(request, dict(request, seed=2026))

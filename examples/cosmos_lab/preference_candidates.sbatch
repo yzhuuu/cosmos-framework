@@ -25,7 +25,7 @@ srun torchrun --standalone --nproc-per-node=2 -m examples.cosmos_lab.stable_infe
  --checkpoint-path "$COSMOS_LAB_ROOT/checkpoints/Cosmos3-Nano" \
  --parallelism-preset=throughput --dp-shard-size=2 --dp-replicate-size=1 --cp-size=1 --cfgp-size=1 \
  -i "$OUTPUT_DIR/requests.jsonl" -o "$OUTPUT_DIR/generated" \
- --seed=2026 --resolution=256 --max-num-seqs=1 \
+ --resolution=256 --max-num-seqs=1 \
  --no-use-torch-compile --no-diffusion-cache --no-guardrails
 python examples/cosmos_lab/validate_outputs.py "$OUTPUT_DIR"
 date -u +%FT%TZ > "$OUTPUT_DIR/end.txt"

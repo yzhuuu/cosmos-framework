@@ -29,6 +29,13 @@ def validate_pair(left, right, source):
         raise ValueError("Candidate conditions differ")
 
 
+def validate_effective(request, actual):
+    """CLI overrides can silently replace JSONL values; inspect the runtime receipt."""
+    for key in ("seed", "prompt", "num_frames", "fps", "num_steps", "guidance", "shift"):
+        if request[key] != actual.get(key):
+            raise ValueError(f"Effective {key} differs for {request['name']}")
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("lab", type=Path)
