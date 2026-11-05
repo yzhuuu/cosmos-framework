@@ -8,7 +8,7 @@ from pathlib import Path
 
 import av
 import numpy as np
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFont
 
 from examples.cosmos_lab.prepare_preferences import condition_digest, sha256, validate_effective, validate_pair
 
@@ -54,8 +54,10 @@ def main():
             raise ValueError("Candidate first frames differ; review conditioning before pairing")
         video = output / f"{pair['pair_id']}.mp4"
         labels = ["Source (caption audit)", "Candidate A", "Candidate B"]
-        goal_lines = textwrap.wrap(pair.get("review_goal", ""), width=110)
-        height = 286 + 18 * len(goal_lines)
+        goal_lines = textwrap.wrap(pair.get("review_goal", ""), width=85)
+        header_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 13)
+        goal_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 16)
+        height = 286 + 22 * len(goal_lines)
         with av.open(str(video), "w") as container:
             stream = container.add_stream("libx264", rate=int(left["fps"]))
             stream.width, stream.height, stream.pix_fmt = 768, height, "yuv420p"
@@ -64,9 +66,14 @@ def main():
                 draw = ImageDraw.Draw(canvas)
                 for col in range(3):
                     canvas.paste(Image.fromarray(frames[col][index]), (col * 256, 30))
-                    draw.text((col * 256 + 5, 8), f"{labels[col]} | {index / left['fps']:.1f}s", fill="black")
+                    draw.text(
+                        (col * 256 + 5, 8),
+                        f"{labels[col]} | {index / left['fps']:.1f}s",
+                        fill="black",
+                        font=header_font,
+                    )
                 for line_index, line in enumerate(goal_lines):
-                    draw.text((5, 288 + line_index * 18), line, fill="black")
+                    draw.text((5, 288 + line_index * 22), line, fill="black", font=goal_font)
                 for packet in stream.encode(av.VideoFrame.from_image(canvas)):
                     container.mux(packet)
             for packet in stream.encode():

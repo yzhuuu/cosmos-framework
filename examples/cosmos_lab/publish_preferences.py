@@ -61,6 +61,10 @@ def main():
             review / "screening.json",
         ]:
             artifact.add_file(str(path))
+        for name in ["source-caption-audit.json", "caption-revisions.json"]:
+            path = review / name
+            if path.exists():
+                artifact.add_file(str(path))
         run.log_artifact(artifact)
         url = run.url
     (review / "wandb-url.txt").write_text(url + "\n")
