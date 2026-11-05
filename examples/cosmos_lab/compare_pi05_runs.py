@@ -25,6 +25,7 @@ def main():
     parser.add_argument("baseline", type=Path)
     parser.add_argument("updated", type=Path)
     parser.add_argument("output", type=Path)
+    parser.add_argument("--step", type=int, default=2)
     args = parser.parse_args()
     args.output.mkdir(parents=True, exist_ok=False)
     runs = [args.baseline, args.updated]
@@ -33,7 +34,8 @@ def main():
     for key in ["revision", "seed", "sampling", "max_steps", "reset_steps", "suite", "trials", "policy_python"]:
         assert protocols[0][key] == protocols[1][key], key
     assert protocols[0].get("checkpoint") is None and protocols[1]["checkpoint"]
-    assert Path(protocols[1]["checkpoint"]).name == "iter_000002", "This comparison is frozen to PPO step 2"
+    assert Path(protocols[1]["checkpoint"]).name == f"iter_{args.step:06d}", "Unexpected checkpoint step"
+    after_label = f"PPO step {args.step}"
     identities = [json.loads((run / "probe/policy-identity.json").read_text()) for run in runs]
     for key in ["config", "identity", "torch", "device", "sampling_mode"]:
         assert identities[0][key] == identities[1][key], key
@@ -73,7 +75,7 @@ def main():
             for step in range(241):
                 image = Image.new("RGB", (1024, 312), "white")
                 draw = ImageDraw.Draw(image)
-                for index, label in enumerate(["SFT baseline", "PPO step 2"]):
+                for index, label in enumerate(["SFT baseline", after_label]):
                     image.paste(Image.fromarray(arrays[index][step]), (index * 512, 28))
                     draw.text(
                         (index * 512 + 4, 4), f"{label} | agent + wrist | {step / 20:.2f}s", font=font, fill="black"
@@ -100,6 +102,7 @@ def main():
         "scope": "Fixed shared-pool diagnostic, not independent generalization; no human video score claimed.",
         "baseline": str(args.baseline),
         "updated": str(args.updated),
+        "optimizer_step": args.step,
     }
     (args.output / "comparison.json").write_text(json.dumps({"summary": summary, "cases": rows}, indent=2) + "\n")
     with wandb.init(
@@ -118,7 +121,7 @@ def main():
                 wandb.Video(
                     str(args.output / (row["case"] + ".mp4")),
                     format="mp4",
-                    caption="Left: SFT baseline. Right: PPO step 2. Each half: agent + wrist.",
+                    caption=f"Left: SFT baseline. Right: {after_label}. Each half: agent + wrist.",
                 ),
             )
         run.log({"comparison/all_cases": table})
