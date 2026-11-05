@@ -29,6 +29,18 @@ def main():
                 for k in range(2):
                     sheet.paste(frames[k][i].resize((128, 128)), (x + 128 * k, y + 22))
             sheet.save(out / f"{pair['pair_id']}-{start:03d}.png")
+        indices = [round(j * (pair["frames"] - 1) / 5) for j in range(6)]
+        detail = Image.new("RGB", (768, 1120), "white")
+        draw = ImageDraw.Draw(detail)
+        for j, index in enumerate(indices):
+            for side in range(2):
+                x, y = j % 3 * 256, (j // 3 * 2 + side) * 280
+                frame = frames[side][index]
+                if frame.size != (256, 256):
+                    raise ValueError("Native detail sheet requires 256-square input")
+                detail.paste(frame, (x, y + 24))
+                draw.text((x + 2, y + 4), f"{'AB'[side]} {index} / {index / pair['fps']:.1f}s", fill="black")
+        detail.save(out / f"{pair['pair_id']}-native.png")
 
 
 if __name__ == "__main__":
