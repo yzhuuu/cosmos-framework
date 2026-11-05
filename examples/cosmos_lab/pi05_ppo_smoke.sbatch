@@ -21,6 +21,8 @@ export LIBERO_CONFIG_PATH="$COSMOS_LAB_ROOT/runtime/libero/config"
 export MUJOCO_GL=egl PYOPENGL_PLATFORM=egl
 export __EGL_VENDOR_LIBRARY_FILENAMES="$COSMOS_LAB_ROOT/runtime/libero/egl-nvidia.json"
 export LD_LIBRARY_PATH="$COSMOS_LAB_ROOT/runtime/libero/system/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH"
+# SimGateway deliberately replaces the child's library path; supply its explicit override.
+export SIM_LD_LIBRARY_PATH="$LD_LIBRARY_PATH"
 export NUMBA_CACHE_DIR="$COSMOS_LAB_ROOT/cache/numba-libero"
 export MPLCONFIGDIR="$COSMOS_LAB_ROOT/cache/matplotlib-libero"
 export NNODES=1 GPUS_PER_NODE=4
@@ -43,6 +45,7 @@ uv pip freeze --python "$(command -v python)" > "$OUTPUT_DIR/packages.txt"
 nvidia-smi > "$OUTPUT_DIR/nvidia-smi.txt"
 df -h /dev/shm > "$OUTPUT_DIR/shared-memory.txt"
 date -u +%FT%TZ > "$OUTPUT_DIR/start.txt"
+srun python -m examples.cosmos_lab.pi05_sim_preflight "$OUTPUT_DIR"
 srun python -c 'import torch, vllm, vllm_omni, ray; assert torch.cuda.device_count() == 4; print(torch.__version__, vllm.__version__, ray.__version__); print(torch.ones(1, device="cuda"))'
 srun python -m cosmos_framework.posttrain.entrypoints.joint_ppo \
   --config examples/cosmos_lab/pi05_ppo_smoke.py --validate-manifest
