@@ -87,7 +87,30 @@ def main():
                 }
             )
             print(json.dumps(rows[-1]), flush=True)
+    backend_rows = []
+    original_cudnn = torch.backends.cuda.cudnn_sdp_enabled()
+    for enabled in [False, True]:
+        torch.backends.cuda.enable_cudnn_sdp(enabled)
+        for index in range(2):
+            condition = model.ppo_condition([observations[index]])
+            score = model.ppo_score(condition, samples[index].trace).logprobs
+            prefix_delta = max(
+                float((a.float() - b.float()).abs().max())
+                for cp, rp in zip(conditions[index].prefix_cache, condition.prefix_cache, strict=True)
+                for a, b in zip(cp, rp, strict=True)
+            )
+            backend_rows.append(
+                {
+                    "cudnn_sdp_enabled": enabled,
+                    "case": index,
+                    "logprob_delta": float((score - old[index]).abs().max()),
+                    "prefix_delta": prefix_delta,
+                }
+            )
+    torch.backends.cuda.enable_cudnn_sdp(original_cudnn)
     report = {
+        "original_cudnn_sdp_enabled": original_cudnn,
+        "sdp_backend_comparison": backend_rows,
         "scope": "No optimizer, no FSDP, no Omni, unchanged loaded base; 16 real saved observations. Diagnostic only, not a PPO training acceptance.",
         "torch": torch.__version__,
         "identity": model.ppo_identity(),
