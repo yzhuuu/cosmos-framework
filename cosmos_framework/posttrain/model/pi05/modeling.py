@@ -127,7 +127,16 @@ class Pi05Model(nn.Module):
         for index, image in enumerate(inputs.images):
             hidden = vision.embeddings(image)
             hidden = hidden.to(vision.encoder.layers[0].self_attn.q_proj.weight.dtype)
-            hidden = vision.encoder(inputs_embeds=hidden).last_hidden_state
+            # vLLM disables cuDNN SDPA at import time, while standalone learners do not.
+            # Pin the same vision arithmetic in both processes without changing global flags.
+            with torch.nn.attention.sdpa_kernel(
+                [
+                    torch.nn.attention.SDPBackend.FLASH_ATTENTION,
+                    torch.nn.attention.SDPBackend.EFFICIENT_ATTENTION,
+                    torch.nn.attention.SDPBackend.MATH,
+                ]
+            ):
+                hidden = vision.encoder(inputs_embeds=hidden).last_hidden_state
             hidden = vision.post_layernorm(hidden)
             hidden = paligemma.multi_modal_projector(hidden)
             embeddings.append(hidden)

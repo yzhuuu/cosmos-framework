@@ -36,6 +36,7 @@ def main():
             step = record.transitions[0]
             old = float(step.algo_extra[STATS_KEY].old_logprob)
             new = float(policy.score_ppo_decisions([step]).logprobs[0])
+            assert torch.backends.cuda.cudnn_sdp_enabled() == enabled, "Model leaked a global backend change"
             rows.append({"cudnn_sdp": enabled, "index": index, "old": old, "new": new, "delta": abs(new - old)})
             print(json.dumps(rows[-1]), flush=True)
     torch.backends.cuda.enable_cudnn_sdp(original)

@@ -42,6 +42,7 @@ def model_identity(config: Pi05ModelConfig, source: dict[str, str]) -> dict:
         "discrete_state_input": False,
         "precision": "openpi-selected-bf16-fp32-v1",
         "matmul_precision": "high",
+        "vision_sdpa": "flash-efficient-math-no-cudnn-v1",
         "value_initialization_seed": 42,
         "training_replay": "preprocessed-uint8-frozen-prefix-fixed-microbatch-v2",
         "source": dict(source),
