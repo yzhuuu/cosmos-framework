@@ -46,7 +46,9 @@ def main():
             {"name": row["name"], "frames": len(frames), "decode_timestamps_state_actions_success": "passed"}
         )
     modes = ["zero", "policy"] if policy else ["zero", "positive_x", "negative_x"]
-    labels = ["Zero control", "Pretrained policy"] if policy else ["Zero control", "+X control", "-X control"]
+    checkpoint = report["protocol"].get("checkpoint")
+    policy_label = "PPO " + Path(checkpoint).name if checkpoint else "Pretrained policy"
+    labels = ["Zero control", policy_label] if policy else ["Zero control", "+X control", "-X control"]
     font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 14)
     for case_id in sorted({r.get("case_id", f"task-{r['task_id']}") for r in report["trials"]}):
         arrays = [pixels[f"{case_id}-{m}"] for m in modes]
@@ -61,7 +63,7 @@ def main():
                 for j, (array, label) in enumerate(zip(arrays, labels, strict=True)):
                     image.paste(Image.fromarray(array[step, :, :256]), (j * 256, 28))
                     draw.text((j * 256 + 4, 4), f"{label} | {step / 20:.2f}s", font=font, fill="black")
-                draw.text((4, 290), f"{case_id}, same initial state; no new training.", font=font, fill="black")
+                draw.text((4, 290), f"{case_id}, same initial state; fixed ODE evaluation.", font=font, fill="black")
                 for packet in stream.encode(av.VideoFrame.from_image(image)):
                     container.mux(packet)
             for packet in stream.encode():
@@ -104,6 +106,7 @@ def main():
             {
                 "scope": report["scope"],
                 "training_launched": False,
+                "evaluated_training_checkpoint": checkpoint,
                 "validated_frames": sum(x["frames"] for x in validations),
                 "pixel_exact_repeats": repeats,
                 "checks": report.get("checks", report.get("repeat_task0")),
@@ -123,6 +126,9 @@ def main():
         identity = probe / "policy-identity.json"
         if identity.exists():
             artifact.add_file(str(identity), name="policy-identity.json")
+        reload_audit = probe / "checkpoint-reload.json"
+        if reload_audit.exists():
+            artifact.add_file(str(reload_audit), name="checkpoint-reload.json")
         run.log_artifact(artifact).wait()
         url = run.url
     (review / "wandb-url.txt").write_text(url + "\n")
