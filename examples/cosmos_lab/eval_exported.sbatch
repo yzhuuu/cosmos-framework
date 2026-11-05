@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#SBATCH --job-name=cosmos-bridge-hf-eval
+#SBATCH --job-name=yuzh-bridge-hf-eval
 #SBATCH --partition=all
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
@@ -22,7 +22,7 @@ git diff HEAD > "$OUTPUT_DIR/code.patch"
 nvidia-smi > "$OUTPUT_DIR/nvidia-smi.txt"
 uv pip freeze --python "$(command -v python)" > "$OUTPUT_DIR/packages.txt"
 date -u +%FT%TZ > "$OUTPUT_DIR/start.txt"
-srun torchrun --standalone --nproc-per-node=2 -m cosmos_framework.scripts.inference \
+srun torchrun --standalone --nproc-per-node=2 -m examples.cosmos_lab.stable_inference \
  --checkpoint-path "$COSMOS_LAB_ROOT/checkpoints/Bridge-Nano-${COSMOS_EVAL_STEP:-200}-HF" \
  --parallelism-preset=throughput --dp-shard-size=2 --dp-replicate-size=1 --cp-size=1 --cfgp-size=1 \
  -i "$OUTPUT_DIR/requests.jsonl" -o "$OUTPUT_DIR/generated" \
