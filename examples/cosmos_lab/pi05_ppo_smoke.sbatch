@@ -38,7 +38,8 @@ OUTPUT_DIR="$COSMOS_LAB_ROOT/runs/pi05-ppo-${SLURM_JOB_ID}"
 mkdir "$OUTPUT_DIR"
 export IMAGINAIRE_OUTPUT_ROOT="$OUTPUT_DIR/output"
 export WANDB_DIR="$OUTPUT_DIR"
-cp "$COSMOS_LAB_ROOT/runs/r5-ppo-preflight/protocol-v2.json" "$OUTPUT_DIR/protocol.json"
+export YUZH_PPO_AUDIT_DIR="$OUTPUT_DIR/audit"
+cp "$COSMOS_LAB_ROOT/runs/r5-ppo-preflight/protocol-v3.json" "$OUTPUT_DIR/protocol.json"
 git rev-parse HEAD > "$OUTPUT_DIR/code-commit.txt"
 git diff HEAD > "$OUTPUT_DIR/code.patch"
 uv pip freeze --python "$(command -v python)" > "$OUTPUT_DIR/packages.txt"
@@ -47,8 +48,8 @@ df -h /dev/shm > "$OUTPUT_DIR/shared-memory.txt"
 date -u +%FT%TZ > "$OUTPUT_DIR/start.txt"
 srun python -m examples.cosmos_lab.pi05_sim_preflight "$OUTPUT_DIR"
 srun python -c 'import torch, vllm, vllm_omni, ray; assert torch.cuda.device_count() == 4; print(torch.__version__, vllm.__version__, ray.__version__); print(torch.ones(1, device="cuda"))'
-srun python -m cosmos_framework.posttrain.entrypoints.joint_ppo \
+srun python -m examples.cosmos_lab.pi05_ppo_audited \
   --config examples/cosmos_lab/pi05_ppo_smoke.py --validate-manifest
-srun python -m cosmos_framework.posttrain.entrypoints.joint_ppo \
+srun python -m examples.cosmos_lab.pi05_ppo_audited \
   --config examples/cosmos_lab/pi05_ppo_smoke.py
 date -u +%FT%TZ > "$OUTPUT_DIR/end.txt"
