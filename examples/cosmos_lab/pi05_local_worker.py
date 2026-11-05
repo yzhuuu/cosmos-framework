@@ -1,0 +1,67 @@
+"""Local file/stdio transport for the native Pi05 ODE policy; no training or network server."""
+
+import argparse
+import contextlib
+import json
+import sys
+from dataclasses import asdict
+from pathlib import Path
+
+import numpy as np
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("root", type=Path)
+    parser.add_argument("output", type=Path)
+    args = parser.parse_args()
+    with contextlib.redirect_stdout(sys.stderr):
+        import torch
+
+        from cosmos_framework.posttrain.model.pi05.config import Pi05ModelConfig
+        from cosmos_framework.posttrain.model.pi05.policy import Pi05TrainPolicy
+
+        config = Pi05ModelConfig(
+            checkpoint_path=str(args.root / "checkpoints/pi05-libero"),
+            tokenizer_path=str(args.root / "runtime/libero/tokenizer.model"),
+            norm_stats_path=str(args.root / "checkpoints/pi05-libero/physical-intelligence/libero/norm_stats.json"),
+            action_chunk=5,
+            denoise_steps=3,
+        )
+        policy = Pi05TrainPolicy(config, device="cuda")
+        policy.model.eval()
+        policy.net.eval()
+        identity = {
+            "config": asdict(config),
+            "identity": policy.ppo_identity(),
+            "torch": torch.__version__,
+            "device": torch.cuda.get_device_name(),
+            "sampling_mode": "ode",
+            "transport": "local stdio/files; native policy arithmetic, no Omni engine",
+        }
+        (args.output / "policy-identity.json").write_text(json.dumps(identity, indent=2) + "\n")
+    print(json.dumps({"ready": True}), flush=True)
+    for line in sys.stdin:
+        request = json.loads(line)
+        if request.get("stop"):
+            break
+        observation = Path(request["observation"]).resolve()
+        action_path = Path(request["actions"]).resolve()
+        if not observation.is_relative_to(args.output.resolve()) or not action_path.is_relative_to(
+            args.output.resolve()
+        ):
+            raise ValueError("IPC paths must remain inside this private run")
+        with np.load(observation, allow_pickle=False) as data:
+            obs = {key: data[key] for key in ["image", "wrist_image", "state"]}
+            obs["prompt"] = str(data["prompt"].item())
+        with contextlib.redirect_stdout(sys.stderr), torch.inference_mode():
+            condition = policy.ppo_condition([obs])
+            latent = policy.ppo_ode_actions(condition, seed=request["seed"])
+            actions = policy.processor.decode(latent).cpu().numpy()[0]
+        assert actions.shape == (5, 7) and actions.dtype == np.float64 and np.isfinite(actions).all()
+        np.save(action_path, actions)
+        print(json.dumps({"actions": str(action_path), "shape": list(actions.shape)}), flush=True)
+
+
+if __name__ == "__main__":
+    main()
