@@ -31,7 +31,7 @@ def main():
     summaries, sections = [], []
     for pair in manifest["pairs"]:
         left, right = [requests[name] for name in pair["candidates"]]
-        validate_pair(left, right, pair["source"])
+        validate_pair(left, right, pair["source"], expected_split=manifest.get("split", "train"))
         if condition_digest(left) != pair["condition_sha256"]:
             raise ValueError("Conditions changed since freeze")
         if sha256(pair["source"]["video"]) != pair["source"]["sha256"]:
@@ -95,7 +95,7 @@ def main():
         actions = html.escape(json.dumps(pair["actions"], indent=2))
         prompt = html.escape(left["prompt"])
         sections.append(
-            f"<section><h2>{pair['pair_id']}</h2><p>Train only; decision: unreviewed</p>"
+            f"<section><h2>{pair['pair_id']}</h2><p>Decision: unreviewed; consult manifest for split</p>"
             f'<video controls preload="metadata" src="{video.name}" width="100%"></video>'
             f"<pre>{actions}</pre><details><summary>Exact full prompt</summary><pre>{prompt}</pre></details>"
             f'<a href="{sheet_path.name}">Timestamped contact sheet</a></section>'

@@ -20,9 +20,9 @@ def condition_digest(request):
     return hashlib.sha256(json.dumps(condition, sort_keys=True).encode()).hexdigest()
 
 
-def validate_pair(left, right, source):
-    if source["split"] != "train":
-        raise ValueError("Preference training candidates must come from train episodes")
+def validate_pair(left, right, source, *, expected_split="train"):
+    if expected_split not in {"train", "val"} or source["split"] != expected_split:
+        raise ValueError("Preference candidates must match their explicitly selected split")
     if left["name"] == right["name"] or left["seed"] == right["seed"]:
         raise ValueError("Expected distinct candidate names and seeds")
     if condition_digest(left) != condition_digest(right):
