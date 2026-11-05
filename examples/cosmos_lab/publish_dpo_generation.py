@@ -51,6 +51,7 @@ def main():
         for path in [
             "comparison.json",
             "baseline-repeat.json",
+            "checkpoint-sha256.json",
             "requests.jsonl",
             "code-commit.txt",
             "dpo/overlay-rank0.json",

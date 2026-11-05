@@ -35,7 +35,7 @@ def apply_overlay(net, source, allowed_missing):
     preserved = {k: (target[k].to_local() if isinstance(target[k], DTensor) else target[k]).clone() for k in missing}
     rows = []
     with torch.no_grad():
-        for name in sorted(source):
+        for index, name in enumerate(sorted(source), 1):
             dest = target[name]
             local = dest.to_local() if isinstance(dest, DTensor) else dest
             full = source[name].to(device=local.device, dtype=local.dtype)
@@ -61,6 +61,8 @@ def apply_overlay(net, source, allowed_missing):
                 )
             )
             del full, expected
+            if index % 200 == 0 and int(os.environ.get("RANK", "0")) == 0:
+                print(f"Verified overlay tensors: {index}/{len(source)}", flush=True)
     after = net.state_dict()
     for name, before in preserved.items():
         value = after[name].to_local() if isinstance(after[name], DTensor) else after[name]

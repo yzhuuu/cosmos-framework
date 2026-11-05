@@ -32,6 +32,7 @@ unset YUZH_DPO_OVERLAY
 generate base
 python -m examples.cosmos_lab.review_dpo_generation "$OUT" --baseline-only
 export YUZH_DPO_OVERLAY="$COSMOS_LAB_ROOT/runs/training/cosmos-lab/bridge-i2v-dpo/yuzh-i2v-dpo-481/20261105190703/checkpoint_artifacts/iter_000002"
+srun python -m examples.cosmos_lab.verify_dpo_artifact "$YUZH_DPO_OVERLAY" "$OUT/checkpoint-sha256.json"
 generate dpo
 python -m examples.cosmos_lab.review_dpo_generation "$OUT"
 date -u +%FT%TZ > "$OUT/end.txt"
