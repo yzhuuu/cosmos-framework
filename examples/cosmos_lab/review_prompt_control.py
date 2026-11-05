@@ -107,7 +107,15 @@ def main():
         scope="Within each seed: same original Nano/image/settings, only text changes. A=action, B=stationary. Pixel motion diagnostics are not task-success scores.",
     )
     (output / "manifest.json").write_text(json.dumps(report, indent=2) + "\n")
-    print(json.dumps(dict(exact_repeats=len(pairs), comparisons=len(pairs))))
+    print(
+        json.dumps(
+            dict(
+                exact_action_repeats=sum(p["exact_action_repeat"] for p in pairs),
+                exact_stationary_repeats=sum(p["exact_stationary_repeat"] is True for p in pairs),
+                comparisons=len(pairs),
+            )
+        )
+    )
 
 
 if __name__ == "__main__":

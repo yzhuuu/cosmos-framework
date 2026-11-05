@@ -14,33 +14,52 @@ def main():
     review = args.run / "review"
     manifest = json.loads((review / "manifest.json").read_text())
     annotations = json.loads((review / "annotations.json").read_text())
+    frozen = json.loads((args.run / "candidate-manifest.json").read_text())
+    kind = frozen.get("study_kind", "text-control")
     with wandb.init(
         entity="sav-inception-self",
         project="cosmos-lab",
-        group="prompt-control",
-        name="yuzh-text-control-" + args.run.name.rsplit("-", 1)[-1],
+        group=kind,
+        name="yuzh-" + kind + "-" + args.run.name.rsplit("-", 1)[-1],
         dir=str(review),
-        config=json.loads((args.run / "candidate-manifest.json").read_text()),
+        config=frozen,
     ) as run:
         table = wandb.Table(
-            columns=["episode", "seed", "action_prompt", "stationary_prompt", "comparison", "agent_observation"]
+            columns=[
+                "episode",
+                "seed",
+                "guidance",
+                "action_prompt",
+                "stationary_prompt",
+                "comparison",
+                "agent_observation",
+            ]
         )
-        metrics = wandb.Table(columns=["episode", "seed", "condition", "adjacent_frame_mae", "first_frame_mae"])
+        metrics = wandb.Table(
+            columns=["episode", "seed", "guidance", "condition", "adjacent_frame_mae", "first_frame_mae"]
+        )
         for row in manifest["pairs"]:
             note = annotations["pairs"][row["pair_id"]]
             video = wandb.Video(
                 row["comparison"],
                 format="mp4",
-                caption="Left: action; right: stationary. Same model, image and seed. Different text; no training.",
+                caption=f"Left: action; right: stationary. Same model, image, seed. Guidance {row.get('guidance', 6):g}. No training.",
             )
             run.log({"text_control/" + row["pair_id"]: video})
             table.add_data(
-                row["episode"], row["seed"], row["action_goal"], row["stationary_goal"], video, json.dumps(note)
+                row["episode"],
+                row["seed"],
+                row.get("guidance", 6),
+                row["action_goal"],
+                row["stationary_goal"],
+                video,
+                json.dumps(note),
             )
             for condition in ["action", "stationary"]:
                 metrics.add_data(
                     row["episode"],
                     row["seed"],
+                    row.get("guidance", 6),
                     condition,
                     row["metrics"][condition + "_mean_adjacent_mae"],
                     row["metrics"][condition + "_mean_first_frame_mae"],
@@ -49,12 +68,13 @@ def main():
         run.summary.update(
             {
                 "conclusion": annotations["conclusion"],
-                "exact_action_repeats": len(manifest["pairs"]),
+                "exact_action_repeats": sum(p["exact_action_repeat"] for p in manifest["pairs"]),
+                "exact_stationary_repeats": sum(p.get("exact_stationary_repeat") is True for p in manifest["pairs"]),
                 "reviewed_frames": sum(2 * p["frames"] for p in manifest["pairs"]),
                 "training_launched": False,
             }
         )
-        artifact = wandb.Artifact("yuzh-text-control-" + args.run.name.rsplit("-", 1)[-1], type="evaluation")
+        artifact = wandb.Artifact("yuzh-" + kind + "-" + args.run.name.rsplit("-", 1)[-1], type="evaluation")
         for relative in [
             "candidate-manifest.json",
             "requests.jsonl",
