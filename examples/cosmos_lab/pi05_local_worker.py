@@ -14,6 +14,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("root", type=Path)
     parser.add_argument("output", type=Path)
+    parser.add_argument("--checkpoint", type=Path)
     args = parser.parse_args()
     with contextlib.redirect_stdout(sys.stderr):
         import torch
@@ -29,6 +30,11 @@ def main():
             denoise_steps=3,
         )
         policy = Pi05TrainPolicy(config, device="cuda")
+        if args.checkpoint:
+            from examples.cosmos_lab.pi05_checkpoint import restore_heads
+
+            audit = restore_heads(policy, args.checkpoint)
+            (args.output / "checkpoint-reload.json").write_text(json.dumps(audit, indent=2) + "\n")
         policy.model.eval()
         policy.net.eval()
         identity = {
@@ -38,6 +44,7 @@ def main():
             "device": torch.cuda.get_device_name(),
             "sampling_mode": "ode",
             "transport": "local stdio/files; native policy arithmetic, no Omni engine",
+            "checkpoint": str(args.checkpoint) if args.checkpoint else None,
         }
         (args.output / "policy-identity.json").write_text(json.dumps(identity, indent=2) + "\n")
     print(json.dumps({"ready": True}), flush=True)

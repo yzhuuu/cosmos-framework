@@ -28,11 +28,12 @@ def main():
     stderr = (args.output / "policy-worker.log").open("w")
     worker = subprocess.Popen(
         [
-            str(args.root / "repos/cosmos-framework-sft/.venv/bin/python"),
+            str(args.root / protocol.get("policy_python", "repos/cosmos-framework-sft/.venv/bin/python")),
             "-m",
             "examples.cosmos_lab.pi05_local_worker",
             str(args.root),
             str(args.output),
+            *(["--checkpoint", protocol["checkpoint"]] if protocol.get("checkpoint") else []),
         ],
         stdin=subprocess.PIPE,
         stdout=subprocess.PIPE,
