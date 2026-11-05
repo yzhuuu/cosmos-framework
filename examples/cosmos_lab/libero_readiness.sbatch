@@ -15,6 +15,7 @@ export PATH="$COSMOS_LAB_ROOT/runtime/libero/venv/bin:$PATH"
 export LIBERO_CONFIG_PATH="$COSMOS_LAB_ROOT/runtime/libero/config"
 export MUJOCO_GL=egl
 export PYOPENGL_PLATFORM=egl
+export LD_LIBRARY_PATH="$COSMOS_LAB_ROOT/runtime/libero/system/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH"
 export NUMBA_CACHE_DIR="$COSMOS_LAB_ROOT/cache/numba-libero"
 export MPLCONFIGDIR="$COSMOS_LAB_ROOT/cache/matplotlib-libero"
 OUTPUT_DIR="$COSMOS_LAB_ROOT/runs/libero-readiness-${SLURM_JOB_ID}"
