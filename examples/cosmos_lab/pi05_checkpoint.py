@@ -12,22 +12,23 @@ def restore_heads(policy, checkpoint: Path):
     if not is_complete_iter_dir(str(checkpoint)):
         raise ValueError(f"Incomplete checkpoint: {checkpoint}")
     before = {key: value.detach().cpu().clone() for key, value in policy.net.state_dict().items()}
-    state = {"net": {key: value.clone() for key, value in before.items()}}
+    # Native DCP stores the flat model state, unlike consolidated model.pt['net'].
+    state = {key: value.clone() for key, value in before.items()}
     reader = dcp.FileSystemReader(str(checkpoint / "model"))
     metadata = reader.read_metadata().state_dict_metadata
-    expected = {f"net.{key}" for key in before}
+    expected = set(before)
     if set(metadata) != expected:
         raise ValueError(
             f"Checkpoint keys differ: missing={expected - set(metadata)}, extra={set(metadata) - expected}"
         )
     for key, value in before.items():
-        descriptor = metadata[f"net.{key}"]
+        descriptor = metadata[key]
         if tuple(descriptor.size) != tuple(value.shape) or descriptor.properties.dtype != value.dtype:
             raise ValueError(f"Shape/dtype mismatch for {key}")
     dcp.load(state, storage_reader=reader)
     rows = []
     for key, old in before.items():
-        new = state["net"][key]
+        new = state[key]
         if not torch.isfinite(new).all():
             raise ValueError(f"Nonfinite checkpoint tensor: {key}")
         delta = new.float() - old.float()
@@ -43,9 +44,9 @@ def restore_heads(policy, checkpoint: Path):
             }
         )
     frozen_before = policy.ppo_frozen_state()
-    policy.net.load_state_dict(state["net"], strict=True)
+    policy.net.load_state_dict(state, strict=True)
     for key, value in policy.net.state_dict().items():
-        if not torch.equal(value.cpu(), state["net"][key]):
+        if not torch.equal(value.cpu(), state[key]):
             raise ValueError(f"Reload mismatch: {key}")
     if policy.ppo_frozen_state() != frozen_before:
         raise ValueError("Frozen VLM changed while restoring trainable heads")
