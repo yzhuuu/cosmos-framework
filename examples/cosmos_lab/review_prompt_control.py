@@ -42,13 +42,27 @@ def main():
             paths.append(path)
             frames.append(np.stack(decode(path)))
         prior = np.stack(decode(group["previous_action_video"]))
-        if not np.array_equal(prior, frames[0]):
+        action_repeat = np.array_equal(prior, frames[0])
+        required_repeat = group.get("require_exact_repeat", True)
+        if required_repeat and not action_repeat:
             raise ValueError("Action repeat is not pixel exact; do not attribute differences solely to text")
+        stationary_repeat = None
+        if "previous_stationary_video" in group:
+            previous_still = group["previous_stationary_video"]
+            if sha256(previous_still) != group["previous_stationary_sha256"]:
+                raise ValueError("Prior stationary video changed")
+            stationary_repeat = np.array_equal(np.stack(decode(previous_still)), frames[1])
+            if required_repeat and not stationary_repeat:
+                raise ValueError("Stationary repeat is not pixel exact")
         if frames[0].shape != frames[1].shape or len(frames[0]) != sides[0]["num_frames"]:
             raise ValueError("Frame shapes/count mismatch")
         if not np.array_equal(frames[0][0], frames[1][0]):
             raise ValueError("Generated first frames differ")
-        captions = ["ACTION: " + group["action_goal"], "STATIONARY: " + group["stationary_goal"]]
+        captions = [
+            f"GUIDANCE {sides[0]['guidance']:g} | SEED {group['seed']}",
+            "ACTION: " + group["action_goal"],
+            "STATIONARY: " + group["stationary_goal"],
+        ]
         lines = [line for c in captions for line in textwrap.wrap(c, width=64)]
         height = 286 + 18 * len(lines)
         video = output / f"{group['pair_id']}.mp4"
@@ -80,7 +94,8 @@ def main():
             video_sha256=[group["previous_action_sha256"], *map(sha256, paths)],
             frames=len(frames[0]),
             fps=sides[0]["fps"],
-            exact_action_repeat=True,
+            exact_action_repeat=bool(action_repeat),
+            exact_stationary_repeat=None if stationary_repeat is None else bool(stationary_repeat),
             first_frames_identical=True,
             metrics=metrics,
             training_eligible=False,
