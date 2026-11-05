@@ -8,7 +8,9 @@ import pytest
 import torch
 
 from cosmos_framework.data.generator.sequence_packing import SequencePlan
+from cosmos_framework.posttrain.config.rl import PreferenceEnvConfig
 from cosmos_framework.posttrain.model.cosmos3 import _Cosmos3FlowCondition
+from cosmos_framework.posttrain.roles.env.preference import build_preference_env
 from examples.cosmos_lab.i2v_preferences import BridgeI2VFlowPolicy, BridgeI2VPreferences
 
 LAB = Path("/mnt/patient-unit/home/yan/cosmos-lab")
@@ -66,6 +68,22 @@ def test_membership_catches_same_episode_with_different_manifest(tmp_path):
     other = BridgeI2VPreferences(path, MANIFEST)
     assert dataset.cursor_fingerprint() != other.cursor_fingerprint()
     assert set(dataset.membership_ids()) == set(other.membership_ids())
+
+
+def test_native_factory_rejects_renamed_reordered_validation_overlap(tmp_path):
+    other = changed_manifest(tmp_path, lambda rows: rows.reverse())
+
+    def build(path):
+        config = PreferenceEnvConfig(
+            factory="examples.cosmos_lab.i2v_preferences.BridgeI2VPreferences",
+            factory_kwargs={"jsonl_path": str(path), "bridge_manifest_path": str(MANIFEST)},
+            shuffle=False,
+        )
+        return build_preference_env(config, seed=2026, include_source_identity=True)
+
+    train, validation = build(PAIRS), build(other)
+    with pytest.raises(ValueError, match="overlap semantically"):
+        train.reject_preference_source_overlap(validation.preference_source_identity())
 
 
 def condition(latent, frames=None):
