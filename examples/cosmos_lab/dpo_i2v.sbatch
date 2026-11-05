@@ -26,6 +26,8 @@ uv pip freeze --python "$(command -v python)" > "$TRACE/packages.txt"
 nvidia-smi > "$TRACE/nvidia-smi.txt"
 cp "$COSMOS_LAB_ROOT/data/bridge-preferences-labeled-v1/"*.jsonl "$TRACE/"
 date -u +%FT%TZ > "$TRACE/start.txt"
+srun python -m pytest --noconftest -o addopts='' \
+ cosmos_framework/posttrain/tests/test_roles_trainer_validation_fsdp.py -q
 srun torchrun --standalone --nproc-per-node=2 -m examples.cosmos_lab.dpo_i2v_run \
  --config examples/cosmos_lab/dpo_i2v_config.py -- \
  job.project=cosmos-lab job.name="yuzh-i2v-dpo-${SLURM_JOB_ID}" job.wandb_mode=online

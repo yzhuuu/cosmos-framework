@@ -41,7 +41,7 @@ def _worker(rank: int, world_size: int, port: int) -> None:
         sharded_shape = _local_shape(weight)
         assert sharded_shape == (8 // world_size, 8)
 
-        with torch.inference_mode():
+        with torch.no_grad():
             output = net(torch.ones(1, 8, device=f"cuda:{rank}"))  # [1,8]
             assert tuple(output.shape) == (1, 8)
             assert _local_shape(next(net.parameters())) == (8, 8)
@@ -50,13 +50,19 @@ def _worker(rank: int, world_size: int, port: int) -> None:
 
         with pytest.raises(RuntimeError, match="synthetic objective failure"):
             try:
-                with torch.inference_mode():
+                with torch.no_grad():
                     net(torch.ones(1, 8, device=f"cuda:{rank}"))  # [1,8]
                     assert _local_shape(next(net.parameters())) == (8, 8)
                     raise RuntimeError("synthetic objective failure")
             finally:
                 reshard_fsdp_modules({"net": net})
         assert _local_shape(next(net.parameters())) == sharded_shape
+        net.train()
+        loss = net(torch.ones(1, 8, device=f"cuda:{rank}")).square().mean()
+        loss.backward()
+        for parameter in net.parameters():
+            assert parameter.grad is not None
+            assert torch.isfinite(parameter.grad.to_local()).all()
     finally:
         dist.destroy_process_group()
 

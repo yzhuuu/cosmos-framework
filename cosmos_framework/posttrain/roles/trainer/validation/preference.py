@@ -317,7 +317,10 @@ class ObjectiveValidationRunner:
             local_report: MetricReport = {}
             local_pairs = 0
             started = time.monotonic()
-            with torch.inference_mode():
+            # The same policy/FSDP runtime returns to training after validation.
+            # Lazy tensors created here may be reused by autograd; inference-mode
+            # tensors cannot be saved for backward even after a module is resharded.
+            with torch.no_grad():
                 for expected_index in range(expected_batches):
                     batch = _run_converged(
                         lambda: self._fetch_batch(runtime.iterator, expected_index),

@@ -229,6 +229,37 @@ def _sd_close(a: dict, b: dict) -> bool:
 
 @pytest.mark.L0
 @pytest.mark.CPU
+def test_validation_created_runtime_tensor_allows_subsequent_training() -> None:
+    trainer = _trainer_with_validation(seed=0, held_out_size=1, validation_batch_size=1)
+    cached = {}
+
+    def use_lazy_scale(module, args, output):
+        if "scale" not in cached:
+            cached["scale"] = torch.ones(output.shape[-1], device=output.device)
+        return output * cached["scale"]
+
+    handle = trainer.model.net.register_forward_hook(use_lazy_scale)
+    before = deepcopy(trainer.model.net.state_dict())
+    reasons = frozenset({ValidationTrigger.BEFORE_TRAINING})
+    try:
+        trainer.mark_validation_pending(0, reasons)
+        report = trainer.validate(0, reasons)
+        trainer.complete_validation(0)
+        assert report.sample_count == 1
+        assert _sd_close(before, trainer.model.net.state_dict())
+        assert all(p.grad is None for p in trainer.model.net.parameters())
+        # A model may reuse a lazy runtime tensor first materialized by validation.
+        # Validation must leave it usable in an autograd-tracked training forward.
+        loss = trainer.model.net(torch.ones(1, 8)).sum()
+        loss.backward()
+        assert all(p.grad is not None and torch.isfinite(p.grad).all() for p in trainer.model.net.parameters())
+        assert not torch.is_inference(cached["scale"])
+    finally:
+        handle.remove()
+
+
+@pytest.mark.L0
+@pytest.mark.CPU
 def test_validation_reshard_deduplicates_roots_and_preserves_primary_errors(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
