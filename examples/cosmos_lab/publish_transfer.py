@@ -12,7 +12,10 @@ import wandb
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("runs", type=Path, nargs="+")
+    parser.add_argument("--name", default="transfer-fixed-control-black-red")
     args = parser.parse_args()
+    manifest = json.loads((args.runs[0] / "dataset-manifest.json").read_text())
+    first = json.loads((args.runs[0] / "requests.jsonl").read_text().splitlines()[0])
     for path in args.runs:
         assert (path / "output-validation.json").is_file()
         assert (path / "comparison.mp4").is_file()
@@ -20,14 +23,15 @@ def main():
         entity="sav-inception-self",
         project="cosmos-lab",
         job_type="evaluation",
-        name="transfer-fixed-control-black-red",
+        name=args.name,
         config={
             "checkpoint_revision": "42da1b57840cec0fd2b642546b72cb95fdc331af",
             "seed": 2026,
             "steps": 4,
-            "frames": 121,
+            "frames": min(first["num_frames"], first.get("max_frames", first["num_frames"])),
             "fps": 30,
-            "scope": "Official example2 fixed-control appearance comparison; qualitative, no success-rate claim.",
+            "scope": manifest["scope"],
+            "example": manifest.get("example", "example2"),
             "inputs": [str(path.resolve()) for path in args.runs],
         },
     )
