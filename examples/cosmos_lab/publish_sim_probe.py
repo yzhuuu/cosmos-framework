@@ -76,7 +76,7 @@ def main():
         "videos": validations,
         "pixel_exact_repeats": repeats,
         "paired_initial_physics_identical": True,
-        "visual_review_scope": "Decoded all frames and checked trajectory records. Contact sheets separately inspected; not a full human video assessment.",
+        "visual_review_scope": "Decoded all frames and checked trajectory records. This publisher performs no visual review or human video assessment.",
     }
     (review / "validation.json").write_text(json.dumps(audit, indent=2) + "\n")
     with wandb.init(
