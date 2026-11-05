@@ -16,7 +16,16 @@ def main():
     candidate = json.loads((args.run / "candidate-manifest.json").read_text())
     screening = json.loads((review / "screening.json").read_text())
     table = wandb.Table(
-        columns=["episode", "split", "review_goal", "decision", "training_eligible", "comparison", "screening_notes"]
+        columns=[
+            "episode",
+            "split",
+            "review_goal",
+            "decision",
+            "training_eligible",
+            "validation_eligible",
+            "comparison",
+            "screening_notes",
+        ]
     )
     with wandb.init(
         entity="sav-inception-self",
@@ -39,10 +48,11 @@ def main():
             media = wandb.Video(pair["comparison"], format="mp4", caption=f"Source | A | B. Check: {goal}")
             table.add_data(
                 pair["pair_id"],
-                "train",
+                candidate.get("split", "train"),
                 goal,
                 note["decision"],
                 note.get("training_eligible", False),
+                note.get("validation_eligible", False),
                 media,
                 json.dumps(note),
             )
@@ -51,6 +61,9 @@ def main():
         run.summary["data/candidate_pairs"] = len(manifest["pairs"])
         run.summary["data/training_eligible_pairs"] = sum(
             note.get("training_eligible", False) for note in screening["pairs"].values()
+        )
+        run.summary["data/validation_eligible_pairs"] = sum(
+            note.get("validation_eligible", False) for note in screening["pairs"].values()
         )
         artifact = wandb.Artifact(f"yuzh-preference-review-{args.run.name.rsplit('-', 1)[-1]}", type="dataset")
         for path in [

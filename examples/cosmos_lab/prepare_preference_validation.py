@@ -1,5 +1,6 @@
 """Freeze two validation episodes before generating independent candidates."""
 
+import argparse
 import json
 from datetime import datetime, timezone
 from pathlib import Path
@@ -11,11 +12,20 @@ from examples.cosmos_lab.prepare_preferences import condition_digest, sha256, va
 
 def main():
     lab = Path("/mnt/patient-unit/home/yan/cosmos-lab")
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--destination", type=Path, default=lab / "data/bridge-preference-validation-v1")
+    parser.add_argument("--start", type=int, default=0)
+    parser.add_argument("--count", type=int, default=2)
+    args = parser.parse_args()
     study = lab / "data/bridge-study-v1"
     source = json.loads((study / "manifest.json").read_text())
     rows = {r["name"]: r for r in map(json.loads, (study / "val-requests.jsonl").read_text().splitlines())}
-    selected = [r for r in source["records"] if r["split"] == "val"][:2]
-    output = lab / "data/bridge-preference-validation-v1"
+    if args.start < 0 or args.count < 1:
+        raise ValueError("Expected nonnegative start and positive count")
+    selected = [r for r in source["records"] if r["split"] == "val"][args.start : args.start + args.count]
+    if len(selected) != args.count:
+        raise ValueError("Selection exceeds frozen validation split")
+    output = args.destination
     output.mkdir(exist_ok=False)
     requests, pairs = [], []
     for record in selected:
@@ -40,12 +50,13 @@ def main():
                 actions=json.loads(candidates[0]["prompt"]).get("actions", []),
                 decision="unreviewed",
                 training_eligible=False,
+                validation_eligible=False,
             )
         )
     manifest = dict(
         created_utc=datetime.now(timezone.utc).isoformat(),
         split="val",
-        selection="First two frozen Bridge val episodes, selected before generation; never train",
+        selection=f"Frozen Bridge val records [{args.start}:{args.start + args.count}], before generation; never train",
         bridge_manifest_sha256=sha256(study / "manifest.json"),
         pairs=pairs,
         seeds=[2026, 2027],

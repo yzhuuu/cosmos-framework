@@ -37,7 +37,7 @@ def main():
         for side in sides:
             side["prompt"] = json.dumps(caption, ensure_ascii=False)
             side["vision_path"] = str(image.resolve())
-        validate_pair(*sides, pair["source"])
+        validate_pair(*sides, pair["source"], expected_split=manifest.get("split", "train"))
         if sha256(image) != pair["image_sha256"]:
             raise ValueError("Condition image changed")
         revisions.append(
