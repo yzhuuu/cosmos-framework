@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#SBATCH --job-name=cosmos-bimanual-baseline
+#SBATCH --job-name=yuzh-bimanual-baseline
 #SBATCH --partition=all
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
