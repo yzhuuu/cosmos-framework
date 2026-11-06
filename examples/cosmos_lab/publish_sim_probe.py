@@ -47,7 +47,9 @@ def main():
         )
     modes = ["zero", "policy"] if policy else ["zero", "positive_x", "negative_x"]
     checkpoint = report["protocol"].get("checkpoint")
-    policy_label = "PPO " + Path(checkpoint).name if checkpoint else "Pretrained policy"
+    policy_label = report["protocol"].get("policy_label") or (
+        "PPO " + Path(checkpoint).name if checkpoint else "Pretrained policy"
+    )
     labels = ["Zero control", policy_label] if policy else ["Zero control", "+X control", "-X control"]
     font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 14)
     for case_id in sorted({r.get("case_id", f"task-{r['task_id']}") for r in report["trials"]}):
