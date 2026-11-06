@@ -26,6 +26,7 @@ def main():
     parser.add_argument("updated", type=Path)
     parser.add_argument("output", type=Path)
     parser.add_argument("--step", type=int, default=2)
+    parser.add_argument("--cases", type=int, default=20)
     args = parser.parse_args()
     args.output.mkdir(parents=True, exist_ok=False)
     runs = [args.baseline, args.updated]
@@ -40,7 +41,7 @@ def main():
     for key in ["config", "identity", "torch", "device", "sampling_mode"]:
         assert identities[0][key] == identities[1][key], key
     records = [{row["case_id"]: row for row in report["trials"] if row["mode"] == "policy"} for report in reports]
-    assert records[0].keys() == records[1].keys() and len(records[0]) == 20
+    assert records[0].keys() == records[1].keys() and len(records[0]) == args.cases
     font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 16)
     rows = []
     for case in sorted(records[0]):
@@ -92,7 +93,7 @@ def main():
                 container.mux(packet)
     summary = {
         "cases": len(rows),
-        "frames_validated": 20 * 241 * 2,
+        "frames_validated": len(rows) * 241 * 2,
         "initial_physics_identical": True,
         "matched_policy_runtime": True,
         "base_any": sum(row["base_any"] for row in rows),

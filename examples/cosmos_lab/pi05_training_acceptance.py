@@ -15,6 +15,7 @@ def main():
     parser.add_argument("--start", type=int, default=0)
     parser.add_argument("--end", type=int, required=True)
     parser.add_argument("--parent-acceptance", type=Path)
+    parser.add_argument("--output", type=Path)
     args = parser.parse_args()
     outputs = list((args.run / "output").rglob(f"summary-step-{args.end}.json"))
     assert len(outputs) == 1
@@ -91,7 +92,7 @@ def main():
         "direct_overlap_with_fixed_eval": sorted(set(map(tuple, all_cases)) & evaluation),
         "executed_control_steps_new": sum(r["steps"] for w in windows for r in w["episodes"]),
     }
-    (args.run / "acceptance.json").write_text(json.dumps(receipt, indent=2) + "\n")
+    (args.output or args.run / "acceptance.json").write_text(json.dumps(receipt, indent=2) + "\n")
     print(
         json.dumps(
             {
