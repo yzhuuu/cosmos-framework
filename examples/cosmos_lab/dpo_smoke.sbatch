@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#SBATCH --job-name=cosmos-dpo-smoke
+#SBATCH --job-name=yuzh-dpo-smoke
 #SBATCH --partition=all
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
