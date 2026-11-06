@@ -33,6 +33,8 @@ def main():
             "examples.cosmos_lab.pi05_local_worker",
             str(args.root),
             str(args.output),
+            "--sampler",
+            protocol.get("sampler_mode", "ode"),
             *(["--checkpoint", protocol["checkpoint"]] if protocol.get("checkpoint") else []),
         ],
         stdin=subprocess.PIPE,

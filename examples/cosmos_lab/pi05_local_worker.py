@@ -1,4 +1,4 @@
-"""Local file/stdio transport for the native Pi05 ODE policy; no training or network server."""
+"""Local file/stdio transport for native Pi05 ODE or audited selected-flow SDE."""
 
 import argparse
 import contextlib
@@ -15,6 +15,7 @@ def main():
     parser.add_argument("root", type=Path)
     parser.add_argument("output", type=Path)
     parser.add_argument("--checkpoint", type=Path)
+    parser.add_argument("--sampler", choices=["ode", "selected-flow-sde"], default="ode")
     args = parser.parse_args()
     with contextlib.redirect_stdout(sys.stderr):
         import torch
@@ -42,7 +43,7 @@ def main():
             "identity": policy.ppo_identity(),
             "torch": torch.__version__,
             "device": torch.cuda.get_device_name(),
-            "sampling_mode": "ode",
+            "sampling_mode": args.sampler,
             "transport": "local stdio/files; native policy arithmetic, no Omni engine",
             "checkpoint": str(args.checkpoint) if args.checkpoint else None,
         }
@@ -63,7 +64,35 @@ def main():
             obs["prompt"] = str(data["prompt"].item())
         with contextlib.redirect_stdout(sys.stderr), torch.inference_mode():
             condition = policy.ppo_condition([obs])
-            latent = policy.ppo_ode_actions(condition, seed=request["seed"])
+            if args.sampler == "ode":
+                latent = policy.ppo_ode_actions(condition, seed=request["seed"])
+            else:
+                sampled = policy.ppo_sample(condition, seed=request["seed"])
+                replay = policy.ppo_score(condition, sampled.trace)
+                delta = float((sampled.scores.logprobs - replay.logprobs).abs().max())
+                assert np.isfinite(delta) and delta <= 1e-5, "Native SDE behavior replay mismatch"
+                assert torch.isfinite(sampled.scores.logprobs).all() and torch.isfinite(sampled.scores.values).all()
+                latent = sampled.normalized_actions
+                trace_path = action_path.with_suffix(".trace.npz")
+                np.savez_compressed(
+                    trace_path,
+                    latent_before=sampled.trace.latent_before.cpu().numpy(),
+                    latent_after=sampled.trace.latent_after.cpu().numpy(),
+                    denoise_index=sampled.trace.denoise_index.cpu().numpy(),
+                    normalized_actions=latent.cpu().numpy(),
+                )
+                audit = {
+                    "observation": str(observation.relative_to(args.output.resolve())),
+                    "trace": str(trace_path.relative_to(args.output.resolve())),
+                    "seed": request["seed"],
+                    "denoise_index": int(sampled.trace.denoise_index.item()),
+                    "logprob": float(sampled.scores.logprobs.item()),
+                    "value": float(sampled.scores.values.item()),
+                    "logprob_replay_delta": delta,
+                    "sampler_identity": sampled.trace.sampler_identity,
+                }
+                with (args.output / "sampling-audit.jsonl").open("a") as audit_stream:
+                    audit_stream.write(json.dumps(audit) + "\n")
             actions = policy.processor.decode(latent).cpu().numpy()[0]
         assert actions.shape == (5, 7) and actions.dtype == np.float64 and np.isfinite(actions).all()
         np.save(action_path, actions)

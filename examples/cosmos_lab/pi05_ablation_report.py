@@ -49,6 +49,8 @@ def main():
     reports, case_sets = zip(*loaded, strict=True)
     policy_seeds = [r["protocol"].get("policy_seed", r["protocol"]["seed"]) for r in reports]
     assert len(set(policy_seeds)) == 1
+    sampler_modes = [r["protocol"].get("sampler_mode", "ode") for r in reports]
+    assert len(set(sampler_modes)) == 1
     for key in [
         "revision",
         "seed",
@@ -79,6 +81,7 @@ def main():
             paired[name][metric] = {"gained": gained, "lost": lost, "delta_cases": len(gained) - len(lost)}
     result = {
         "evaluation_policy_seed": policy_seeds[0],
+        "sampler_mode": sampler_modes[0],
         "scope": "Reused 50-case validation, one training seed, same tasks/shared500; unknown pretrained exposure. Any is primary; final and sampled persistence are secondary. No human video score or generalization claim.",
         "counts": dict(zip(names, counts, strict=True)),
         "paired": paired,

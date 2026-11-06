@@ -65,7 +65,8 @@ def main():
                 for j, (array, label) in enumerate(zip(arrays, labels, strict=True)):
                     image.paste(Image.fromarray(array[step, :, :256]), (j * 256, 28))
                     draw.text((j * 256 + 4, 4), f"{label} | {step / 20:.2f}s", font=font, fill="black")
-                draw.text((4, 290), f"{case_id}, same initial state; fixed ODE evaluation.", font=font, fill="black")
+                sampler = report["protocol"].get("sampler_mode", "ode")
+                draw.text((4, 290), f"{case_id}, same initial state; {sampler}.", font=font, fill="black")
                 for packet in stream.encode(av.VideoFrame.from_image(image)):
                     container.mux(packet)
             for packet in stream.encode():
