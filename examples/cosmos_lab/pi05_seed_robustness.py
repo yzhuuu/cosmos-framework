@@ -4,8 +4,11 @@ import argparse
 import json
 from pathlib import Path
 
-import matplotlib.pyplot as plt
+import matplotlib
 import numpy as np
+
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
 
 from examples.cosmos_lab.pi05_ablation_report import load
 
@@ -48,7 +51,7 @@ def main():
         counts.append(
             [{metric: sum(row[metric] for row in cases.values()) for metric in metrics} for _, cases in group]
         )
-    assert seeds == [2026, 2027]
+    assert seeds == [2026, 3026]
     for index in range(3):
         assert all_loaded[0][index][0]["protocol"].get("checkpoint") == all_loaded[1][index][0]["protocol"].get(
             "checkpoint"
@@ -61,7 +64,7 @@ def main():
             per_method[method][metric] = {
                 "success_both": [case for case in sorted(a) if a[case][metric] and b[case][metric]],
                 "only_2026": [case for case in sorted(a) if a[case][metric] and not b[case][metric]],
-                "only_2027": [case for case in sorted(a) if not a[case][metric] and b[case][metric]],
+                "only_3026": [case for case in sorted(a) if not a[case][metric] and b[case][metric]],
                 "neither": [case for case in sorted(a) if not a[case][metric] and not b[case][metric]],
             }
     effects = {}
@@ -69,11 +72,11 @@ def main():
         rows = []
         for case in sorted(reference_cases):
             deltas = [int(c[2][case][metric]) - int(c[1][case][metric]) for c in cases_by_seed]
-            rows.append({"case": case, "delta_2026": deltas[0], "delta_2027": deltas[1]})
+            rows.append({"case": case, "delta_2026": deltas[0], "delta_3026": deltas[1]})
         effects[metric] = {
-            "gained_both": [r["case"] for r in rows if r["delta_2026"] == r["delta_2027"] == 1],
-            "lost_both": [r["case"] for r in rows if r["delta_2026"] == r["delta_2027"] == -1],
-            "opposite_sign": [r["case"] for r in rows if r["delta_2026"] * r["delta_2027"] == -1],
+            "gained_both": [r["case"] for r in rows if r["delta_2026"] == r["delta_3026"] == 1],
+            "lost_both": [r["case"] for r in rows if r["delta_2026"] == r["delta_3026"] == -1],
+            "opposite_sign": [r["case"] for r in rows if r["delta_2026"] * r["delta_3026"] == -1],
             "cases": rows,
         }
     receipt = {
