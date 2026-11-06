@@ -30,6 +30,7 @@ def main():
     parser.add_argument("--reference-step", type=int, default=0)
     parser.add_argument("--reference-label", default="SFT baseline")
     parser.add_argument("--label")
+    parser.add_argument("--show-goal-state", action="store_true")
     args = parser.parse_args()
     args.output.mkdir(parents=True, exist_ok=False)
     runs = [args.baseline, args.updated]
@@ -55,6 +56,7 @@ def main():
         pair = [record[case] for record in records]
         folders = [run / "probe" / row["name"] for run, row in zip(runs, pair, strict=True)]
         with np.load(folders[0] / "trajectory.npz") as a, np.load(folders[1] / "trajectory.npz") as b:
+            success_flags = [a["success"].astype(bool), b["success"].astype(bool)]
             assert np.array_equal(a["initial_sim_state"], b["initial_sim_state"]), case
             action_rmse = float(np.sqrt(np.mean((a["actions"] - b["actions"]) ** 2)))
             state_rmse = float(np.sqrt(np.mean((a["states"] - b["states"]) ** 2)))
@@ -79,15 +81,25 @@ def main():
         rows.append(row)
         with av.open(str(args.output / f"{case}.mp4"), "w") as container:
             stream = container.add_stream("libx264", rate=20)
-            stream.width, stream.height, stream.pix_fmt = 1024, 312, "yuv420p"
+            height = 340 if args.show_goal_state else 312
+            stream.width, stream.height, stream.pix_fmt = 1024, height, "yuv420p"
             for step in range(241):
-                image = Image.new("RGB", (1024, 312), "white")
+                image = Image.new("RGB", (1024, height), "white")
                 draw = ImageDraw.Draw(image)
                 for index, label in enumerate([args.reference_label, after_label]):
                     image.paste(Image.fromarray(arrays[index][step]), (index * 512, 28))
                     draw.text(
                         (index * 512 + 4, 4), f"{label} | agent + wrist | {step / 20:.2f}s", font=font, fill="black"
                     )
+                    if args.show_goal_state:
+                        now = bool(success_flags[index][step])
+                        ever = bool(success_flags[index][: step + 1].any())
+                        draw.text(
+                            (index * 512 + 4, 316),
+                            f"Native goal NOW: {'YES' if now else 'NO'} | EVER: {'YES' if ever else 'NO'}",
+                            font=font,
+                            fill="#176b32" if now else "#983333",
+                        )
                 draw.text(
                     (4, 290),
                     f"{case}; same initial physics / prompt / seed; shared training pool",
@@ -113,6 +125,7 @@ def main():
         "optimizer_step": args.step,
         "reference_optimizer_step": args.reference_step,
         "labels": [args.reference_label, after_label],
+        "live_native_goal_overlay": args.show_goal_state,
     }
     (args.output / "comparison.json").write_text(json.dumps({"summary": summary, "cases": rows}, indent=2) + "\n")
     with wandb.init(
