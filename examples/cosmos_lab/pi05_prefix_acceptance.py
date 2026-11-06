@@ -39,6 +39,7 @@ def main():
     assert identities[0] == identities[1], "Objective identity differs beyond the intended reward override"
     episodes = []
     case_sequences = []
+    initial_behavior = None
     for after, before in zip(candidate, reference, strict=True):
         assert after["learning_rates"] == before["learning_rates"]
         assert after["frozen_vlm_digest"] == before["frozen_vlm_digest"]
@@ -49,6 +50,23 @@ def main():
 
         cases = keyed_cases(after)
         assert len(cases) == 8 and cases == keyed_cases(before), "Realized per-rank cases differ"
+        if after["optimizer_step"] == 1:
+            pairs = [{r["sample_id"].split(":", 1)[1]: r for r in w["target_diagnostics"]} for w in [before, after]]
+            assert pairs[0].keys() == pairs[1].keys()
+            value_delta = max(abs(pairs[0][k]["old_value"] - pairs[1][k]["old_value"]) for k in pairs[0])
+            assert value_delta == 0
+            assert all(
+                pairs[0][k][field] == pairs[1][k][field]
+                for k in pairs[0]
+                for field in ["terminated", "truncated", "executed_steps", "loss_mask"]
+            )
+            initial_behavior = {
+                "decisions": len(pairs[0]),
+                "max_old_value_delta": value_delta,
+                "success_events_and_loss_masks_identical": True,
+                "changed_reward_decisions": sum(pairs[0][k]["reward"] != pairs[1][k]["reward"] for k in pairs[0]),
+                "scope": "Saved initial collection diagnostics agree; raw action equality is not attested here.",
+            }
         case_sequences.append({"optimizer_step": after["optimizer_step"], "cases_by_rank_episode": cases})
         groups = collections.defaultdict(list)
         for row in after["target_diagnostics"]:
@@ -83,6 +101,7 @@ def main():
         "episodes_checked": len(episodes),
         "success_any": sum(e["success_any"] for e in episodes),
         "successful_with_zero_active_reward": 0,
+        "initial_collection_diagnostics": initial_behavior,
         "case_sequences": case_sequences,
         "episodes": episodes,
         "scope": "Mechanism acceptance, not a quality claim. Transformed reward sums do not measure final physical success.",
