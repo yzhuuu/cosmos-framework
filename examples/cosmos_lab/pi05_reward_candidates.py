@@ -1,4 +1,4 @@
-"""Untrained reward candidate for a separately versioned first-reach ablation."""
+"""Reward arithmetic for the separately versioned R10 first-reach ablation."""
 
 from cosmos_framework.posttrain.schema import EnvironmentFeedback
 
@@ -9,8 +9,8 @@ def first_reach_prefix_reward(feedback: EnvironmentFeedback) -> float:
     """Sum through the first successful control in a chunk, inclusive.
 
     Requires the fixed-episode raw per-control facts. This pure arithmetic helper
-    is not wired into a trainer. A future experiment must bind its revision into
-    checkpoint objective identity and keep the native reference recipe separate.
+    is wired only by the explicit R10 config, which binds its revision into
+    checkpoint objective identity and keeps the native reference recipe separate.
     """
     if feedback.control_terminated is None:
         raise ValueError("First-reach prefix requires raw per-control success flags")

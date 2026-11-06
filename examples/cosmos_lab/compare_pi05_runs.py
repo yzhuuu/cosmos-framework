@@ -27,6 +27,9 @@ def main():
     parser.add_argument("output", type=Path)
     parser.add_argument("--step", type=int, default=2)
     parser.add_argument("--cases", type=int, default=20)
+    parser.add_argument("--reference-step", type=int, default=0)
+    parser.add_argument("--reference-label", default="SFT baseline")
+    parser.add_argument("--label")
     args = parser.parse_args()
     args.output.mkdir(parents=True, exist_ok=False)
     runs = [args.baseline, args.updated]
@@ -34,9 +37,13 @@ def main():
     protocols = [report["protocol"] for report in reports]
     for key in ["revision", "seed", "sampling", "max_steps", "reset_steps", "suite", "trials", "policy_python"]:
         assert protocols[0][key] == protocols[1][key], key
-    assert protocols[0].get("checkpoint") is None and protocols[1]["checkpoint"]
+    if args.reference_step:
+        assert Path(protocols[0]["checkpoint"]).name == f"iter_{args.reference_step:06d}"
+    else:
+        assert protocols[0].get("checkpoint") is None
+    assert protocols[1]["checkpoint"]
     assert Path(protocols[1]["checkpoint"]).name == f"iter_{args.step:06d}", "Unexpected checkpoint step"
-    after_label = f"PPO step {args.step}"
+    after_label = args.label or f"PPO step {args.step}"
     identities = [json.loads((run / "probe/policy-identity.json").read_text()) for run in runs]
     for key in ["config", "identity", "torch", "device", "sampling_mode"]:
         assert identities[0][key] == identities[1][key], key
@@ -76,7 +83,7 @@ def main():
             for step in range(241):
                 image = Image.new("RGB", (1024, 312), "white")
                 draw = ImageDraw.Draw(image)
-                for index, label in enumerate(["SFT baseline", after_label]):
+                for index, label in enumerate([args.reference_label, after_label]):
                     image.paste(Image.fromarray(arrays[index][step]), (index * 512, 28))
                     draw.text(
                         (index * 512 + 4, 4), f"{label} | agent + wrist | {step / 20:.2f}s", font=font, fill="black"
@@ -104,6 +111,8 @@ def main():
         "baseline": str(args.baseline),
         "updated": str(args.updated),
         "optimizer_step": args.step,
+        "reference_optimizer_step": args.reference_step,
+        "labels": [args.reference_label, after_label],
     }
     (args.output / "comparison.json").write_text(json.dumps({"summary": summary, "cases": rows}, indent=2) + "\n")
     with wandb.init(
@@ -122,7 +131,7 @@ def main():
                 wandb.Video(
                     str(args.output / (row["case"] + ".mp4")),
                     format="mp4",
-                    caption=f"Left: SFT baseline. Right: {after_label}. Each half: agent + wrist.",
+                    caption=f"Left: {args.reference_label}. Right: {after_label}. Each half: agent + wrist.",
                 ),
             )
         run.log({"comparison/all_cases": table})
@@ -130,6 +139,10 @@ def main():
         artifact = wandb.Artifact("yuzh-pi05-ppo-comparison-" + args.updated.name.rsplit("-", 1)[-1], type="evaluation")
         artifact.add_file(str(args.output / "comparison.json"))
         artifact.add_file(str(args.updated / "probe/checkpoint-reload.json"))
+        if args.reference_step:
+            artifact.add_file(
+                str(args.baseline / "probe/checkpoint-reload.json"), name="reference-checkpoint-reload.json"
+            )
         run.log_artifact(artifact).wait()
         url = run.url
     (args.output / "wandb-url.txt").write_text(url + "\n")

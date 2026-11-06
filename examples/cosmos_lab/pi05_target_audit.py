@@ -52,6 +52,8 @@ def main():
     args.output.mkdir(parents=True, exist_ok=False)
     episodes, sequences = [], []
     for run in args.runs:
+        protocol = json.loads((run / "protocol.json").read_text())
+        assert not protocol.get("reward_revision"), "R9 raw-relative audit cannot interpret a transformed reward run"
         paths = list((run / "output").rglob("windows.jsonl"))
         assert len(paths) == 1
         sequence = []
