@@ -21,6 +21,7 @@ def main():
     assert acceptance["passed"] and acceptance["summary"]["optimizer_step"] == 8
     used = set(map(tuple, acceptance["training_cases"]))
     original = {(task, state) for task in range(10) for state in [1, 2]}
+    original |= {(task, 0) for task in range(3)}  # Earlier R3 policy probe.
     rng = random.Random(20261106)
     selected = []
     for task in range(10):
@@ -34,7 +35,7 @@ def main():
         "created_utc": datetime.datetime.now(datetime.timezone.utc).isoformat(),
         "sampling_seed": 20261106,
         "python": platform.python_version(),
-        "algorithm": "Per task0..9 sample5 sorted eligible state0..49; exclude observed PPO cases and original state1/2; sort selected per task",
+        "algorithm": "Per task0..9 sample5 sorted eligible state0..49; exclude observed PPO cases, original state1/2 and R3 task0..2/state0; sort selected per task",
         "training_acceptance_sha256": hashlib.sha256(acceptance_path.read_bytes()).hexdigest(),
         "excluded_training": sorted(used),
         "excluded_previous_eval": sorted(original),
