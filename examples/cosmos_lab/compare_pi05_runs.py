@@ -38,6 +38,9 @@ def main():
     protocols = [report["protocol"] for report in reports]
     for key in ["revision", "seed", "sampling", "max_steps", "reset_steps", "suite", "trials", "policy_python"]:
         assert protocols[0][key] == protocols[1][key], key
+    assert protocols[0].get("policy_seed", protocols[0]["seed"]) == protocols[1].get(
+        "policy_seed", protocols[1]["seed"]
+    )
     if args.reference_step:
         assert Path(protocols[0]["checkpoint"]).name == f"iter_{args.reference_step:06d}"
     else:

@@ -96,7 +96,7 @@ def main():
                             request = {
                                 "observation": str(observation),
                                 "actions": str(action_path),
-                                "seed": protocol["seed"] + step // 5,
+                                "seed": protocol.get("policy_seed", protocol["seed"]) + step // 5,
                             }
                             before = time.monotonic()
                             worker.stdin.write(json.dumps(request) + "\n")

@@ -42,10 +42,13 @@ def main():
     parser.add_argument("native", type=Path)
     parser.add_argument("prefix", type=Path)
     parser.add_argument("output", type=Path)
+    parser.add_argument("--title", default="R10: first-reach credit ablation on the same 50 validation cases")
     args = parser.parse_args()
     paths = [args.baseline, args.native, args.prefix]
     loaded = [load(path) for path in paths]
     reports, case_sets = zip(*loaded, strict=True)
+    policy_seeds = [r["protocol"].get("policy_seed", r["protocol"]["seed"]) for r in reports]
+    assert len(set(policy_seeds)) == 1
     for key in [
         "revision",
         "seed",
@@ -75,6 +78,7 @@ def main():
             lost = [c for c in sorted(after) if not after[c][metric] and before[c][metric]]
             paired[name][metric] = {"gained": gained, "lost": lost, "delta_cases": len(gained) - len(lost)}
     result = {
+        "evaluation_policy_seed": policy_seeds[0],
         "scope": "Reused 50-case validation, one training seed, same tasks/shared500; unknown pretrained exposure. Any is primary; final and sampled persistence are secondary. No human video score or generalization claim.",
         "counts": dict(zip(names, counts, strict=True)),
         "paired": paired,
@@ -101,7 +105,7 @@ def main():
         xticklabels=["Any success\n(primary)", "Final success", "All last1s", "All last2s"],
         ylabel="Successful cases / 50",
         ylim=(0, 55),
-        title="R10: first-reach credit ablation on the same 50 validation cases",
+        title=args.title,
     )
     ax.legend(loc="upper right")
     ax.grid(axis="y", alpha=0.2)
